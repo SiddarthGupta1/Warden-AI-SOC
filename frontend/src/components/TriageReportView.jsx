@@ -50,7 +50,7 @@ export default function TriageReportView({ report: initialReport, incident, onRe
   // Edit form state
   const [editFormData, setEditFormData] = useState({
     verdict: 'TRUE_POSITIVE',
-    confidence_score: 90,
+    evidence_completeness: 90,
     executive_summary: '',
     evidence_findings_text: '',
     recommended_actions_text: ''
@@ -61,7 +61,7 @@ export default function TriageReportView({ report: initialReport, incident, onRe
     if (initialReport) {
       setEditFormData({
         verdict: initialReport.verdict || 'TRUE_POSITIVE',
-        confidence_score: initialReport.confidence_score || 90,
+        evidence_completeness: initialReport.evidence_completeness || 90,
         executive_summary: initialReport.executive_summary || '',
         evidence_findings_text: (initialReport.evidence_findings || []).join('\n'),
         recommended_actions_text: (initialReport.recommended_actions || []).join('\n')
@@ -123,7 +123,7 @@ export default function TriageReportView({ report: initialReport, incident, onRe
       const updated = {
         ...report,
         verdict: editFormData.verdict,
-        confidence_score: parseInt(editFormData.confidence_score, 10) || 90,
+        evidence_completeness: parseInt(editFormData.evidence_completeness, 10) || 90,
         executive_summary: editFormData.executive_summary,
         evidence_findings: editFormData.evidence_findings_text.split('\n').map(s => s.trim()).filter(Boolean),
         recommended_actions: editFormData.recommended_actions_text.split('\n').map(s => s.trim()).filter(Boolean)
@@ -146,10 +146,10 @@ export default function TriageReportView({ report: initialReport, incident, onRe
     const evidenceList = report.evidence_findings?.map((e, idx) => `${idx + 1}. ${e}`).join('\n') || '- None recorded';
     const actionList = report.recommended_actions?.map((a) => `- [ ] ${a}`).join('\n') || '- None recorded';
 
-    return `# 🛡️ Sentinel AI SOC - Root Cause Analysis (RCA) & Triage Report
+    return `# 🛡️ Warden SOC - Root Cause Analysis (RCA) & Triage Report
 Incident: #${incident?.incidentNumber || 'N/A'} - ${incident?.title || 'Security Incident'}
 Incident Created: ${formatDateTime(incident?.createdTimeUtc, tz, 'medium')}
-AI Verdict: ${report.verdict} (${report.confidence_score}% Confidence)
+AI Verdict: ${report.verdict} (${report.evidence_completeness}% evidence completeness)
 Assessed Severity: ${report.severity_assessment || incident?.severity || 'Medium'}
 AI Model Used: ${report.model_used || 'gpt-4o-mini'} (${(report.reasoning_tier || 'fast').replace('_', ' ')})
 
@@ -260,7 +260,7 @@ ${actionList}
       </div>
     `).join('') || '';
 
-    const userObj = JSON.parse(localStorage.getItem('sentinel_user') || '{}');
+    const userObj = JSON.parse(localStorage.getItem('warden_user') || '{}');
     const analystName = userObj.username ? `${userObj.username} (${userObj.role || 'Analyst'})` : 'SOC Lead Analyst';
     const nowUtc = new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
     const auditHash = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
@@ -329,7 +329,7 @@ ${actionList}
       <div class="verdict-title">${verdictMeta.label}</div>
     </div>
     <div style="font-size:20px; font-weight:900; font-family:'JetBrains Mono', monospace; color:${verdictMeta.color};">
-      ${report.confidence_score}%
+      ${report.evidence_completeness}%
     </div>
   </div>
 
@@ -380,7 +380,7 @@ ${actionList}
   </div>
 
   <div class="footer">
-    <span>Microsoft Sentinel AI SOC Agent • Executive Report</span>
+    <span>Microsoft Warden SOC Agent • Executive Report</span>
     <span>CONFIDENTIAL // SECURITY OPERATIONS CENTER</span>
   </div>
 </body>
@@ -399,29 +399,66 @@ ${actionList}
     });
   };
 
-  const handleCloseAsFalsePositive = async () => {
+  // These actions write to a live SIEM. Previously they reported nothing at all -
+  // errors went to console.error and success was silent - so a working button was
+  // indistinguishable from a broken one.
+  const [actionState, setActionState] = useState(null); // {kind:'busy'|'ok'|'error', message}
+
+  const runAction = async (label, fn) => {
+    setActionState({ kind: 'busy', message: `${label}…` });
     try {
+      const detail = await fn();
+      setActionState({ kind: 'ok', message: detail || `${label} — done.` });
+      if (onRefresh) onRefresh();
+    } catch (e) {
+      setActionState({
+        kind: 'error',
+        message: e.userMessage || e.response?.data?.detail || `${label} failed.`,
+      });
+    }
+    setTimeout(() => setActionState(null), 6000);
+  };
+
+  const buildRcaComment = () =>
+    `### 🤖 AI Triage Assessment\n` +
+    `**Verdict:** ${report.verdict} (${report.evidence_completeness}% evidence completeness)\n\n` +
+    `**Executive Summary:** ${report.executive_summary}\n\n` +
+    `**Recommended Actions:**\n` +
+    (report.recommended_actions || []).map(a => `- ${a}`).join('\n') +
+    (report.evidence_gaps?.length
+      ? `\n\n**Not verified by the agent:**\n` + report.evidence_gaps.map(g => `- ${g}`).join('\n')
+      : '');
+
+  const handleCloseAsFalsePositive = () =>
+    runAction('Closing as false positive', async () => {
       await incidentsApi.updateStatus(incident.id, {
         status: 'Closed',
         classification: 'FalsePositive',
         classification_reason: 'InaccurateData',
-        labels: ['AI-Triaged-FP', 'AutoClosed']
+        labels: ['AI-Triaged-FP', 'AutoClosed'],
       });
-      if (onRefresh) onRefresh();
-    } catch (e) {
-      console.error(e);
-    }
-  };
+      return 'Incident closed in Sentinel as a false positive.';
+    });
 
-  const handlePushCommentToSentinel = async () => {
-    try {
-      const summaryMsg = `### 🤖 Sentinel AI Triage Assessment\n**Verdict:** ${report.verdict} (${report.confidence_score}% confidence)\n**Executive Summary:** ${report.executive_summary}\n**Recommended Actions:**\n` + report.recommended_actions.map(a => `- ${a}`).join('\n');
-      await incidentsApi.addComment(incident.id, summaryMsg);
-      if (onRefresh) onRefresh();
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  const handlePushCommentToSentinel = () =>
+    runAction('Syncing RCA to Sentinel', async () => {
+      await incidentsApi.addComment(incident.id, buildRcaComment());
+      return 'Root cause analysis posted to the Sentinel incident.';
+    });
+
+  // Escalation previously called the same handler as "Sync RCA", so it only posted a
+  // comment despite its label. It now actually escalates: raises severity, moves the
+  // incident to Active, tags it for review, and records the assessment.
+  const handleEscalate = () =>
+    runAction('Escalating in Sentinel', async () => {
+      await incidentsApi.addComment(incident.id, buildRcaComment());
+      await incidentsApi.updateStatus(incident.id, {
+        status: 'Active',
+        severity: report.severity_assessment || incident.severity || 'High',
+        labels: ['AI-Escalated', 'Analyst-Review-Required', `Verdict:${report.verdict}`],
+      });
+      return 'Escalated: incident set to Active with the AI assessment attached. Apply containment from the SOAR panel.';
+    });
 
   return (
     <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-lg flex flex-col h-[760px] transition-colors duration-200">
@@ -437,7 +474,7 @@ ${actionList}
           </div>
         </div>
 
-        {/* Confidence Meter & Top Actions */}
+        {/* Evidence Completeness & Top Actions */}
         <div className="flex items-center space-x-3">
           {/* Edit / Save Report Button */}
           {!isEditing ? (
@@ -517,9 +554,9 @@ ${actionList}
           </div>
 
           <div className="text-right pl-2 border-l border-slate-300/40 dark:border-slate-700/60">
-            <div className="text-[10px] uppercase font-mono font-bold text-slate-500 dark:text-slate-400">Confidence</div>
+            <div className="text-[10px] uppercase font-mono font-bold text-slate-500 dark:text-slate-400">Evidence Completeness</div>
             <div className="text-xl font-black font-mono text-slate-900 dark:text-white">
-              {report.confidence_score}%
+              {report.evidence_completeness}%
             </div>
           </div>
         </div>
@@ -553,14 +590,14 @@ ${actionList}
 
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Confidence Score (%)
+                  Evidence Completeness (%)
                 </label>
                 <input
                   type="number"
                   min="1"
                   max="100"
-                  value={editFormData.confidence_score}
-                  onChange={(e) => setEditFormData({ ...editFormData, confidence_score: e.target.value })}
+                  value={editFormData.evidence_completeness}
+                  onChange={(e) => setEditFormData({ ...editFormData, evidence_completeness: e.target.value })}
                   className="w-full p-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg font-mono text-slate-900 dark:text-slate-100 focus:border-blue-500"
                 />
               </div>
@@ -794,6 +831,31 @@ ${actionList}
               </div>
             </div>
 
+            {/* Evidence Gaps - what the agent could NOT verify */}
+            {report.evidence_gaps?.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center space-x-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  <span>4b. Evidence Gaps &mdash; Not Verified by the Agent</span>
+                </h4>
+                <div className="mb-2 text-[11px] text-slate-500 dark:text-slate-400">
+                  These checks could not be completed or returned no data. The verdict above does not rest on
+                  confirmed evidence for these points &mdash; review them before acting.
+                </div>
+                <div className="space-y-2">
+                  {report.evidence_gaps.map((gap, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-amber-500/5 border border-amber-500/30 rounded-lg p-2.5 text-xs text-slate-800 dark:text-slate-200 flex items-start space-x-2"
+                    >
+                      <span className="text-amber-600 dark:text-amber-400 font-bold font-mono">!</span>
+                      <span>{gap}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Recommended Actions */}
             <div>
               <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center space-x-1.5">
@@ -837,6 +899,22 @@ ${actionList}
       </div>
 
       {/* Bottom SOAR Action Bar */}
+      {actionState && (
+        <div
+          className={`px-4 py-2.5 text-xs flex items-center space-x-2 border-t ${
+            actionState.kind === 'error'
+              ? 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400'
+              : actionState.kind === 'ok'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400'
+              : 'bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-400'
+          }`}
+        >
+          {actionState.kind === 'busy' && <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />}
+          {actionState.kind === 'ok' && <CheckCircle className="w-3.5 h-3.5 shrink-0" />}
+          {actionState.kind === 'error' && <AlertTriangle className="w-3.5 h-3.5 shrink-0" />}
+          <span>{actionState.message}</span>
+        </div>
+      )}
       <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 flex items-center justify-between gap-3">
         <div className="flex items-center space-x-2">
           <button
@@ -866,11 +944,12 @@ ${actionList}
           </button>
         ) : (
           <button
-            onClick={handlePushCommentToSentinel}
+            onClick={handleEscalate}
+            title="Posts the assessment, sets the incident Active and raises severity. Containment is applied separately from the SOAR panel."
             className="flex items-center space-x-1.5 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold shadow-lg shadow-red-600/20 transition-all"
           >
             <ShieldAlert className="w-3.5 h-3.5" />
-            <span>Escalate & Apply Containment</span>
+            <span>Escalate in Sentinel</span>
           </button>
         )}
       </div>

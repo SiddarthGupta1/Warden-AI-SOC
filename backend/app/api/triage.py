@@ -4,15 +4,52 @@ from typing import List, Dict, Any, Optional
 import json
 from datetime import datetime
 from pydantic import BaseModel
+from app import db
 from app.auth.jwt_handler import get_current_user, User
 from app.services.sentinel_client import sentinel_client
 from app.agent.triage_agent import triage_agent
 from app.services.report_generator import generate_docx_report, generate_html_report
+from app.services.pdf_report import generate_pdf_report
 
 router = APIRouter(prefix="/triage", tags=["AI Triage"])
 
-# Store generated triage reports in memory
-TRIAGE_REPORTS_CACHE: Dict[str, Dict[str, Any]] = {}
+
+class _ReportStore:
+    """
+    Dict-shaped facade over the triage_reports table.
+
+    Reports used to live in a module-level dict, so a restart discarded every
+    completed investigation and two replicas disagreed about what had been
+    triaged. Keeping the mapping interface means call sites read unchanged
+    while the data is now durable.
+    """
+
+    def __setitem__(self, incident_id: str, report: Dict[str, Any]) -> None:
+        db.save_report(incident_id, report)
+
+    def __getitem__(self, incident_id: str) -> Dict[str, Any]:
+        report = db.get_report(incident_id)
+        if report is None:
+            raise KeyError(incident_id)
+        return report
+
+    def get(self, incident_id: str, default=None):
+        return db.get_report(incident_id) or default
+
+    def __contains__(self, incident_id: str) -> bool:
+        return db.get_report(incident_id) is not None
+
+    def __iter__(self):
+        return iter(db.all_report_summaries())
+
+    def items(self):
+        return db.all_report_summaries().items()
+
+    def __delitem__(self, incident_id: str) -> None:
+        db.delete_report(incident_id)
+
+
+TRIAGE_REPORTS_CACHE = _ReportStore()
 
 class ChatRequest(BaseModel):
     message: str
@@ -27,11 +64,29 @@ async def execute_kql_query(
     req: KQLRunRequest,
     current_user: User = Depends(get_current_user)
 ):
-    """Execute arbitrary KQL query directly against Log Analytics workspace"""
+    """
+    Execute a read-only KQL query against the Log Analytics workspace.
+
+    Queries reaching this endpoint are model-generated or analyst-typed, so they get
+    the same validation as the agent's self-written queries: read-only, single
+    statement, row-capped, no external data sources. Previously this executed
+    whatever it was sent, which made it a weaker path than the agent's own.
+    """
     from app.services.kql_runner import kql_runner
+    from app.agent.kql_guard import validate_kql
+
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
-    result = await kql_runner.execute_kql(req.query, timespan_hours=req.timespan_hours or 24)
+
+    guard = validate_kql(req.query, req.timespan_hours or 24)
+    if not guard.ok:
+        raise HTTPException(status_code=400, detail=f"Query rejected: {guard.reason}")
+
+    result = await kql_runner.execute_kql(guard.query, timespan_hours=guard.timespan_hours)
+    # Surface any rewriting so the analyst sees what actually ran, not what they typed.
+    if guard.notes:
+        result["guard_notes"] = guard.notes
+        result["executed_query"] = guard.query
     return result
 
 @router.post("/{incident_id}/run")
@@ -78,7 +133,7 @@ async def update_triage_report(
 @router.get("/{incident_id}/download")
 async def download_triage_report(
     incident_id: str,
-    format: str = Query("docx", enum=["docx", "markdown", "json", "html"]),
+    format: str = Query("docx", enum=["pdf", "docx", "markdown", "json", "html"]),
     current_user: User = Depends(get_current_user)
 ):
     """Download executive incident investigation report as Word (.docx), Markdown, JSON, or printable HTML/PDF report"""
@@ -93,6 +148,16 @@ async def download_triage_report(
 
     inc_num = incident.get("incidentNumber", "Report")
     analyst_name = f"{current_user.username} ({current_user.role})"
+
+    if format == "pdf":
+        file_stream = generate_pdf_report(incident=incident, report=report, analyst_name=analyst_name)
+        return Response(
+            content=file_stream.getvalue(),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="Sentinel-Executive-Brief-Incident-{inc_num}.pdf"'
+            }
+        )
 
     if format == "docx":
         file_stream = generate_docx_report(incident=incident, report=report, analyst_name=analyst_name)
@@ -142,7 +207,7 @@ async def download_triage_report(
 **Incident:** #{inc_num} - {incident.get("title")}
 **Generated On:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}
 **Reviewing Analyst:** {analyst_name}
-**AI Verdict:** {report.get("verdict")} ({report.get("confidence_score")}% Confidence)
+**AI Verdict:** {report.get("verdict")} ({report.get("evidence_completeness")}% Evidence Completeness)
 **Assessed Severity:** {report.get("severity_assessment", incident.get("severity"))}
 **AI Model Used:** {model_used} ({reasoning_tier})
 
@@ -181,7 +246,7 @@ async def download_triage_report(
 {capa_actions}
 
 ---
-*Report generated autonomously by Microsoft Sentinel AI SOC Agent v1.0*
+*Report generated autonomously by Microsoft Warden SOC Agent v1.0*
 """
     return Response(
         content=md_content,

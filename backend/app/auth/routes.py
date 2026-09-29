@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
+from app import db
 from app.auth.jwt_handler import (
-    Token, User, verify_password, get_password_hash, create_access_token, get_current_user, USERS_DB
+    Token, User, verify_password, get_password_hash, create_access_token, get_current_user
 )
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -19,7 +20,7 @@ class ResetPasswordRequest(BaseModel):
 
 @router.post("/login", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    user_dict = USERS_DB.get(form_data.username)
+    user_dict = db.get_user(form_data.username)
     if not user_dict or not verify_password(form_data.password, user_dict["hashed_password"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -51,7 +52,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 @router.post("/json-login", response_model=Token)
 async def json_login(credentials: LoginRequest):
-    user_dict = USERS_DB.get(credentials.username)
+    user_dict = db.get_user(credentials.username)
     if not user_dict or not verify_password(credentials.password, user_dict["hashed_password"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -83,7 +84,7 @@ async def json_login(credentials: LoginRequest):
 
 @router.post("/reset-password", response_model=Token)
 async def reset_password(payload: ResetPasswordRequest):
-    user_dict = USERS_DB.get(payload.username)
+    user_dict = db.get_user(payload.username)
     if not user_dict or not verify_password(payload.current_password, user_dict["hashed_password"]):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -104,9 +105,8 @@ async def reset_password(payload: ResetPasswordRequest):
             detail="New password must be different from the temporary password.",
         )
     
-    # Update password and clear must_reset_password requirement
-    user_dict["hashed_password"] = get_password_hash(new_pwd)
-    user_dict["must_reset_password"] = False
+    # Persist the new password so it survives a restart.
+    db.set_password(payload.username, get_password_hash(new_pwd), must_reset_password=False)
     
     access_token = create_access_token(
         data={"sub": user_dict["username"], "role": user_dict["role"]}

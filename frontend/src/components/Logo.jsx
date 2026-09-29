@@ -11,7 +11,7 @@ export default function Logo({ className = "h-8", showText = true }) {
       {showText && (
         <div className="flex flex-col leading-none">
           <span className="text-base font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
-            Sentinel <span className="text-blue-500">AI</span>
+            War<span className="text-blue-500">den</span>
           </span>
           <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-widest mt-0.5">
             Autonomous SOC

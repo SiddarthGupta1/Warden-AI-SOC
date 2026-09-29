@@ -1,418 +1,286 @@
-# 🛡️ Microsoft Sentinel AI SOC Agent - Autonomous Incident Triage Platform
+# Warden
 
-<div align="center">
+**AI triage for Microsoft Sentinel.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![React 18](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-61DAFB.svg?logo=react&logoColor=black)](https://react.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind%20CSS-38B2AC.svg?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Microsoft Sentinel](https://img.shields.io/badge/SIEM-Microsoft%20Sentinel-0078D4.svg?logo=microsoft-azure&logoColor=white)](https://azure.microsoft.com/en-us/products/microsoft-sentinel)
-[![Defender XDR](https://img.shields.io/badge/XDR-Microsoft%20Defender-00A4EF.svg?logo=windows&logoColor=white)](https://www.microsoft.com/en-us/security/business/threat-protection/endpoint-defender)
-[![Tests: 15 Passing](https://img.shields.io/badge/Tests-15%20Passing-brightgreen.svg?logo=pytest&logoColor=white)](#-testing--verification)
-[![Docker](https://img.shields.io/badge/Container-Docker%20Compose-2496ED.svg?logo=docker&logoColor=white)](docker-compose.yml)
-[![Kubernetes](https://img.shields.io/badge/Orchestration-Azure%20AKS-326CE5.svg?logo=kubernetes&logoColor=white)](aks/)
+An AI analyst for Microsoft Sentinel. It reads incidents, enriches their entities against
+live threat intelligence, writes and runs its own KQL against Log Analytics, reaches a
+verdict mapped to MITRE ATT&CK, and executes containment actions that are verified rather
+than assumed.
 
-**An enterprise-grade, autonomous AI SOC analyst agent built for Microsoft Sentinel, Microsoft Defender XDR, and Azure Entra ID.**
+Two things distinguish it from the usual demo of this shape:
 
-[Explore Features](#-key-platform-capabilities) • [Instant Setup](#-instant-3-minute-setup-guide) • [Permissions Guide](#-azure-service-principal--permissions-matrix) • [Cost Estimation](TSHIRT_COST_ESTIMATION.md) • [Architecture](#%EF%B8%8F-system-architecture) • [Deployment](#-docker-container-deployment)
-
-</div>
+- **It reports what it could not check.** Every report carries an `evidence_gaps` list and
+  an `evidence_completeness` score derived from it. An empty query result is recorded as
+  missing telemetry, never as an absence of malicious activity.
+- **Its accuracy is measured, not asserted.** A labelled benchmark of 56 incidents and a
+  reproducible harness live in [`backend/evals/`](backend/evals). Numbers below come from
+  that harness and can be re-run.
 
 ---
 
-## 🌟 Overview
+## Measured performance
 
-The **Microsoft Sentinel AI SOC Agent** is an autonomous Tier-1 & Tier-2 cybersecurity platform engineered to accelerate threat triage from **20+ minutes down to 5 seconds**. 
+`gpt-5-mini`, 56 labelled incidents, 3 runs:
 
-Built with a ReAct (Reasoning + Acting) decision loop and dynamic hybrid model segregation (`gpt-4o-mini` & `gpt-6-astra`), the agent automatically queries Azure Log Analytics telemetry via dynamic KQL, cross-references multi-source Threat Intelligence feeds, maps attacks to MITRE ATT&CK tactics, generates publication-ready executive briefings, and triggers 1-click SOAR playbooks directly inside Microsoft Sentinel.
+| Metric | Result |
+|---|---|
+| Verdict accuracy (4-class) | **84.8% ± 2.7%** |
+| Operational accuracy (merging false-positive / benign) | **97.3%** |
+| Missed threats | **0** across 44 malicious-incident evaluations |
+| False alarms | 1 of 18 benign |
+| MITRE technique recall / precision | 84.9% / 75.4% |
+| Latency | ~35 s per incident |
+| Cost | ~5,400 tokens per incident (single-pass) |
+| **Run-to-run noise floor** | **5.4%** |
 
----
-
-## 🚀 What's New in the Latest Release
-
-- ⚡ **Interactive SOAR Playbook Selector:** Click **"Run Playbook"** on any incident to search, filter by category (`Containment`, `Identity`, `Network`, `Notification`, `Ticketing`, `Forensics`), and trigger live Azure Logic Apps (`Microsoft.Logic/workflows`) or built-in SOAR workflows with custom execution tracking notes and auto-synced Sentinel audit comments.
-- 🧠 **Intelligent Hybrid AI Model Segregation:** Seamlessly routes routine, single-alert low-severity triage (~80% volume) to `gpt-4o-mini` for maximum token economy while escalating complex multi-stage/high-severity incidents (~20% volume) to `gpt-6-astra` for deep forensic root-cause analysis.
-- 🔒 **First-Run Ephemeral Passwords & Zero-Trust Security:** Ephemeral startup passwords generated via `secrets.token_urlsafe(12)` on boot, with mandatory first-login password reset modals enforcing strong credentials before console access.
-- 📄 **Executive Briefing Export Suite:** Instant 1-click exports of publication-ready Executive Incident Reports in **PDF** (WeasyPrint formatted), **Markdown**, and **JSON** with dynamic AI model stamps and signature hash.
-- 👥 **Live Microsoft Entra ID Directory Assignment:** Assign incidents directly to SOC analysts and engineers fetched in real-time from your live Microsoft Entra ID (Azure AD) tenant.
-- 🏷️ **NIST-Compliant Mandatory Closure Modal:** Requires explicit SOC classification (`TruePositive`, `FalsePositive`, `BenignPositive`, `Undetermined`) and detailed closing reasons before resolving incidents.
-
----
-
-## 🚀 Instant 3-Minute Setup Guide
-
-### 🍏 On macOS (New MacBook / Mac Studio)
-
-Open **Terminal** on your Mac (`Cmd + Space` $\rightarrow$ type `Terminal` $\rightarrow$ Enter) and run:
+That last row matters more than the first. Identical configurations vary by up to 5.4% on
+this dataset, so any comparison showing less than that is noise. Single-run accuracy figures
+— including those quoted by most projects in this space — are one draw from a distribution.
 
 ```bash
-# Step 1: Install Prerequisites via Homebrew (if not already installed)
-brew install python@3.11 node
-
-# Step 2: Clone the Repository
-git clone https://github.com/ankush351992/AI-SOC-Agent-for-Microsoft-Sentinel.git
-cd AI-SOC-Agent-for-Microsoft-Sentinel
-
-# Step 3: Setup & Start Backend (Terminal 1)
 cd backend
-python3.11 -m venv venv
-source venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
-cp .env.example .env    # (Paste your Azure & OpenAI credentials into .env)
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+python -m evals.run_eval                         # score the agent
+python -m evals.compare  run_a.json run_b.json   # A/B two configurations
+python -m evals.stability run1.json run2.json    # measure the noise floor first
 ```
 
-In a **New Terminal Tab** (`Cmd + T`):
+---
+
+## How it works
+
+```
+Sentinel incident
+      │
+      ├─ entity extraction        accounts, IPs, hosts, processes, file hashes
+      ├─ threat intelligence      AbuseIPDB · VirusTotal · Microsoft TI
+      ├─ investigation            ─┬─ adaptive: the model writes its own KQL,
+      │                            │            reads results, follows leads
+      │                            └─ fixed:    entity-derived hunts (fallback)
+      ├─ reasoning                verdict · MITRE mapping · evidence gaps
+      ├─ write-back               report posted to the Sentinel incident
+      └─ response                 verified containment, or an honest refusal
+```
+
+**Adaptive investigation.** Given the query tool directly, the model states a hypothesis,
+runs a query, reads the rows, and decides what to ask next. In a live run it pulled a
+`CorrelationId` out of one result and pivoted on it — a lead a fixed pipeline cannot follow.
+Every query passes [`kql_guard`](backend/app/agent/kql_guard.py): read-only, single
+statement, row-capped, no `externaldata` or outbound plugins. The same guard covers the
+KQL Studio's Run button, so an analyst-run or model-written query gets exactly the checks
+the agent's own queries get. It costs roughly 8× the tokens of a single pass, so it is
+behind `ENABLE_ADAPTIVE_INVESTIGATION`.
+
+**Verified response.** Containment executes, then re-reads the resulting state, and only
+reports success if the change is confirmed. Refusals and failures are written into the
+incident with the specific reason. Containment tags are applied only on verified success.
+
+| Action | Implementation |
+|---|---|
+| `block_ip` | Sentinel threat-intelligence indicator, verified by read-back |
+| `trigger_playbook` | Azure Logic App invoked via its callback URL, run id returned |
+| `close_false_positive` | Sentinel incident classification |
+| `disable_account` | Microsoft Graph `accountEnabled=false`, verified by re-read |
+| `revoke_sessions` | Microsoft Graph `revokeSignInSessions` |
+| `isolate_endpoint` | Defender for Endpoint machine isolation |
+
+The last three require tenant permissions (`User.ReadWrite.All` with admin consent, and a
+licensed Defender for Endpoint tenant). Without them the action returns `NOT_PERMITTED`
+naming the missing permission — it does not pretend to have run. **They are also hidden
+from the console** unless those permissions exist: a containment button that cannot contain
+is worse than no button.
+
+The playbook selector lists **only Logic Apps actually deployed** in the configured resource
+group. In demo mode a sample catalogue is shown, labelled as samples.
+
+---
+
+## What was here before, and what was added
+
+This repository began as a Sentinel triage demo. The original work established the product
+shape — the FastAPI/React structure, the Sentinel and Log Analytics clients, the live
+investigation stream, the KQL studio, the incident workbench UI, the report generators and
+the demo mode that lets it run without Azure. That scaffolding is still the backbone and
+most of the UI is unchanged.
+
+What follows is what changed, and why.
+
+### Corrected — features that reported success without doing the work
+
+| Area | Before | Now |
+|---|---|---|
+| **SOAR containment** | `isolate_endpoint`, `revoke_sessions`, `block_ip`, `disable_account` were `pass` statements that returned a hardcoded success string and wrote *"Account Disabled / Compromise Contained"* into the live incident | Real API calls, verified by read-back, with `SUCCESS` / `SIMULATED` / `NOT_PERMITTED` / `FAILED` states and truthful audit records |
+| **Playbook execution** | `trigger_playbook` generated a random run id and never contacted the Logic App | Resolves the trigger, fetches the callback URL from ARM, invokes it, returns the real run id |
+| **Reasoning-model support** | Calls capped at 2,500 tokens returned HTTP 200 with *empty* content on reasoning models; the error was swallowed and the canned engine answered while the report still named the model | Raised to 16,000; a silent fallback is now surfaced by the eval harness |
+| **Connection status** | Reported `CONNECTED` whenever config fields were populated, including inside a container that could not authenticate at all | Attempts a token and reports the real state, e.g. `CREDENTIAL ERROR (serving simulated data)` |
+| **Auto-polling** | `ENABLE_AUTO_POLLING` was read by the settings API and implemented nowhere; nothing was ever triaged automatically | Implemented, bounded, and it reports whether the loop is actually running |
+| **Confidence score** | A number the model emitted with no definition, which read *higher* when the verdict was wrong (ECE 0.106–0.180) | Redefined as `evidence_completeness`, tied to a mandatory `evidence_gaps` list (ECE 0.066–0.092) |
+| **MITRE mapping** | Added inferred techniques the evidence did not support (precision 59%) | Constrained to directly evidenced techniques (precision 75%) |
+| **PDF export** | The UI offered it; the backend produced `.docx`, Markdown, JSON and HTML only | Real PDF via reportlab |
+| **Playbook catalogue** | Eight playbook names were hardcoded and merged into the live list; none had ever been deployed, so choosing one could only fail | Live mode lists only Logic Apps that actually exist; demo samples are labelled as samples |
+| **"Escalate & Apply Containment"** | Called the same handler as "Sync RCA" — it posted a comment and neither escalated nor contained | Renamed *Escalate in Sentinel*, and it now sets the incident Active, raises severity to the AI's assessment, and tags it for review |
+| **Action feedback** | Both Sentinel write-back buttons reported nothing: success was silent and errors went to `console.error`, so a working button looked broken | Busy / success / failure states with the actual reason surfaced |
+| **Model routing** | `AZURE_OPENAI_DEPLOYMENT_NAME not in ["gpt-4o-mini","gpt-4o","gpt-6-astra"]` silently overrode the routed model on any deployment outside that list, defeating hybrid routing | The routed model is used; the deployment name is only a fallback |
+| **KQL Studio execution** | `/kql/run` executed arbitrary KQL with no validation, while the agent's own queries were guarded — the weaker path was the one exposed to users | Same `kql_guard` on both paths |
+
+### Added — capabilities that did not exist
+
+- **Evaluation harness** ([`backend/evals/`](backend/evals)) — 56 labelled incidents across
+  identity, endpoint, cloud, network and data, plus `run_eval`, `compare` and `stability`.
+  The false positives are written to look alarming while carrying decisive benign context
+  (a change ticket, an asset-inventory entry, a red-team authorisation), so the benchmark
+  measures contextual reasoning rather than keyword matching.
+- **Adaptive investigation loop** with a KQL safety validator.
+- **Persistence** ([`backend/app/db.py`](backend/app/db.py)) — users, triage reports and an
+  append-only remediation audit log in SQLite. Previously all three were process memory, so
+  every restart discarded accounts, reissued temporary passwords, and lost every report.
+- **Remediation audit trail**, written locally *before* the Sentinel comment, so an attempt
+  survives the workspace being unreachable. Exposed at `GET /api/incidents/{id}/audit`.
+- **Rate limiting** — 10/min on authentication (the brute-force surface), 20/min on triage
+  (the cost surface), health probes exempt.
+- **RBAC enforcement** — roles existed and issued, but nothing checked them; any analyst
+  could contain hosts or rewrite Azure credentials.
+- **File-hash enrichment** — VirusTotal was wired up but unreachable, because the triage
+  path never extracted hashes.
+- **Error boundary** — a render fault produced a blank white page indistinguishable from an
+  outage. Unguarded array access on optional report fields (which are model-generated and
+  not guaranteed) was a real trigger, and a 401 redirected to `/login`, a route this
+  router-less SPA does not define. An expired session now explains itself.
+- **CI** — was backend tests only. Now also builds the frontend with a bundle budget, builds
+  the container *and runs it* against `/healthz`, and emits CycloneDX SBOMs for both stacks.
+- **Renamed to Warden.** The project, container, Kubernetes namespace, loggers, browser
+  storage keys and UI branding. Azure resource names were deliberately left alone — renaming
+  them would mean recreating the workspace, Sentinel onboarding and analytics rule.
+
+### Security fixes
+
+- **Authentication bypass.** `get_current_user` fabricated a valid `User` from the token's
+  own claims whenever the subject was unknown. Combined with a signing key committed to this
+  repository, anyone who had read the source could mint an admin session. The unknown subject
+  is now rejected, the role is read from the user store rather than the token, and disabled
+  accounts are checked on every request.
+- **Signing key.** No usable default remains. Every key ever published in this repository is
+  blocklisted; in production the application refuses to start rather than run with one.
+- **Secret exposure over the API.** The settings endpoint returned *raw* Azure, OpenAI and
+  threat-intelligence keys to any admin, so every status poll placed live credentials in an
+  HTTP response, the browser's memory, and anything logging or proxying that traffic. Keys
+  are now always masked to a short prefix: being an admin is a reason to *set* a key, not to
+  read it back. `/settings/update` is admin-only; previously any analyst could rewrite the
+  platform's Azure credentials.
+- **Unvalidated query execution.** `/kql/run` — reachable by any authenticated analyst and
+  the target of the KQL Studio's Run button — executed arbitrary Kusto with no checks, while
+  the agent's own queries were guarded. Both paths now share `kql_guard`.
+- **CORS.** `["*"]` with credentials enabled, replaced with explicit origins.
+- **Container.** `docker-compose.yml` no longer hardcodes a secret; a `.dockerignore` stops
+  the host's `node_modules`, `venv` and local database entering the build context.
+- **Kubernetes.** The manifest declared 2 replicas against in-memory state, and a rolling
+  update against a ReadWriteOnce volume that would deadlock on every deploy. Now a single
+  replica with a PVC and a `Recreate` strategy, with the scale-out path documented.
+
+### Claims removed
+
+The original README described multi-agent orchestration, a ReAct decision loop, CycloneDX
+SBOM compliance, and specific MTTR and cost figures. The first two did not exist — there was
+one agent running a fixed sequence. SBOMs now exist. The performance figures had no
+measurement behind them and have been replaced with the benchmark above.
+
+---
+
+## Setup
+
+Requires Python 3.11+ and Node 20+.
+
 ```bash
-# Step 4: Setup & Start Frontend (Terminal 2)
-cd AI-SOC-Agent-for-Microsoft-Sentinel/frontend
-npm install
-npm run dev
+cd backend && python -m venv venv && venv\Scripts\activate && pip install -r requirements.txt
 ```
 
-> 🌐 Open your browser at **`http://localhost:3000`**
-
----
-
-### 🪟 On Windows (PowerShell / Windows Terminal)
-
-Open **PowerShell** and run:
-
-```powershell
-# Step 1: Clone the Repository
-git clone https://github.com/ankush351992/AI-SOC-Agent-for-Microsoft-Sentinel.git
-cd AI-SOC-Agent-for-Microsoft-Sentinel
-
-# Step 2: Setup & Start Backend (PowerShell Window 1)
-cd backend
-python -m venv venv
-.\venv\Scripts\activate
-pip install --upgrade pip
-pip install -r requirements.txt
-Copy-Item .env.example .env    # (Paste your Azure & OpenAI credentials into .env)
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```bash
+cd frontend && npm install && npm run build
 ```
 
-In a **Second PowerShell Window**:
-```powershell
-# Step 3: Setup & Start Frontend (PowerShell Window 2)
-cd AI-SOC-Agent-for-Microsoft-Sentinel\frontend
-npm install
-npm run dev
+Run it:
+
+```bash
+cd backend && python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-> 🌐 Open your browser at **`http://localhost:3000`**
+It starts with no configuration at all: `DEMO_MODE` defaults on and ships four sample
+incidents. **Temporary passwords for the default accounts are printed once in the startup
+log** and must be reset on first login. They persist across restarts.
 
----
+### Live mode
 
-### 🔑 First-Run Authentication & Security
-
-To prevent hardcoded default credentials in production, initial passwords for all built-in accounts (`soc_admin`, `analyst`, `tier1_analyst`) are generated randomly on application startup using a cryptographically secure generator (`secrets.token_urlsafe(12)`) and output in the backend startup logs:
-
-```text
-================================================================================
-[SECURITY NOTICE] All user accounts initialized with random temporary credentials.
-Every user MUST reset their password on first login via the portal.
---------------------------------------------------------------------------------
-  Username: soc_admin          | Role: admin      | Temporary Password: <generated>
-  Username: analyst            | Role: analyst    | Temporary Password: <generated>
-  Username: tier1_analyst      | Role: analyst    | Temporary Password: <generated>
-================================================================================
-```
-
-When signing in for the first time, entering the temporary password will automatically prompt you to choose a new permanent password (minimum 8 characters) before granting console access.
-
----
-
-### ⚙️ `.env` Configuration Template
-
-When creating `backend/.env`, populate your Azure and OpenAI keys:
+Copy `backend/.env.example` to `backend/.env` and set:
 
 ```env
-APP_NAME="Microsoft Sentinel AI Triage Platform"
+SECRET_KEY=            # python -c "import secrets; print(secrets.token_urlsafe(48))"
 DEMO_MODE=False
 
-# Azure Sentinel Workspace Coordinates
-AZURE_SUBSCRIPTION_ID="YOUR_AZURE_SUBSCRIPTION_ID"
-AZURE_RESOURCE_GROUP_NAME="YOUR_RESOURCE_GROUP"
-AZURE_WORKSPACE_NAME="YOUR_WORKSPACE_NAME"
-AZURE_WORKSPACE_ID="YOUR_LOG_ANALYTICS_WORKSPACE_GUID"
-AZURE_TENANT_ID="YOUR_AZURE_TENANT_ID"
-AZURE_CLIENT_ID="YOUR_AZURE_CLIENT_ID"
-AZURE_CLIENT_SECRET="YOUR_AZURE_CLIENT_SECRET"
-USE_MANAGED_IDENTITY=False
+AZURE_TENANT_ID=
+AZURE_SUBSCRIPTION_ID=
+AZURE_RESOURCE_GROUP_NAME=
+AZURE_WORKSPACE_NAME=
+AZURE_WORKSPACE_ID=    # the workspace GUID, not its name
+USE_MANAGED_IDENTITY=True   # uses DefaultAzureCredential, incl. your az login session
 
-# Azure OpenAI Hybrid Models & Key Configuration
-LLM_PROVIDER="azure_openai"
-AZURE_OPENAI_ENDPOINT="https://YOUR_AOAI_RESOURCE.openai.azure.com/"
-AZURE_OPENAI_API_KEY="YOUR_AZURE_OPENAI_KEY"
-AZURE_OPENAI_API_VERSION="2024-05-01-preview"
+LLM_PROVIDER=azure_openai
+AZURE_OPENAI_ENDPOINT=
+AZURE_OPENAI_API_KEY=
+AZURE_OPENAI_DEPLOYMENT_NAME=
+AZURE_OPENAI_API_VERSION=2025-04-01-preview
 
-# Intelligent Model Segregation (Hybrid Architecture)
-LLM_ROUTING_MODE="hybrid"          # "hybrid", "always_mini", or "always_astra"
-FAST_MODEL_NAME="gpt-4o-mini"       # Routine single-alert triage (~80% volume)
-REASONING_MODEL_NAME="gpt-6-astra"  # Deep forensic root-cause reasoning (~20% volume)
-
-# Threat Intelligence & Automation
-ENABLE_MICROSOFT_THREAT_INTEL=True
-AUTO_POST_COMMENTS_TO_SENTINEL=True
-AUTO_CLOSE_FALSE_POSITIVES=False
+ABUSEIPDB_API_KEY=     # free tier
+VIRUSTOTAL_API_KEY=    # free tier
 ```
 
----
+A service principal needs **Microsoft Sentinel Responder** and **Log Analytics Reader**.
+Identity containment additionally needs Graph `User.ReadWrite.All` with tenant admin consent.
 
-### 🔐 Azure Service Principal & Permissions Matrix
-
-To connect live with Microsoft Sentinel, Log Analytics, Azure Logic Apps, and Microsoft Entra ID, configure an **Azure App Registration (Service Principal)** or **Managed Identity** with the following permissions:
-
-#### 1. Azure RBAC Roles (Scope: Resource Group or Sentinel Workspace)
-Assign the following roles to the Service Principal over the Resource Group containing your Sentinel workspace and Logic Apps:
-
-| Azure Role | Scope | Purpose |
-| :--- | :--- | :--- |
-| **`Microsoft Sentinel Responder`** | Resource Group | Read incidents/entities/alerts, post investigation audit comments, update status/classification, and assign incidents. *(Use `Microsoft Sentinel Contributor` for full access)* |
-| **`Log Analytics Reader`** | Resource Group / Log Analytics | Execute contextual KQL queries across telemetry tables (`SigninLogs`, `DeviceProcessEvents`, `DeviceNetworkEvents`, etc.). |
-| **`Logic App Contributor`** | Resource Group / Workflows | Discover available Logic Apps and trigger SOAR containment workflows/playbooks. |
-| **`Cognitive Services OpenAI User`** *(Optional)* | Azure OpenAI Resource | Invoke Azure OpenAI deployments (`gpt-4o-mini` & `gpt-6-astra`) via Entra ID token instead of API key. |
-
-#### 2. Microsoft Graph API Permissions (Application Permissions + Admin Consent)
-In **Microsoft Entra ID $\rightarrow$ App Registrations $\rightarrow$ API Permissions**, add **Microsoft Graph (Application)**:
-
-| Microsoft Graph Permission | Type | Admin Consent | Purpose |
-| :--- | :--- | :--- | :--- |
-| **`User.Read.All`** | Application | ✅ Required | Fetch SOC Engineers and tenant users for the Entra ID Incident Assignment dropdown. |
-| **`User.ReadWrite.All`** | Application | ✅ Required | Execute SOAR containment actions: invalidate user refresh tokens (`revokeSignInSessions`) and temporarily disable compromised accounts. |
-
----
-
-#### ⚡ Automated 1-Click Azure CLI Setup Script
-Run the following script in Azure Cloud Shell / Bash to create the Service Principal, assign all RBAC roles, and grant Microsoft Graph permissions with admin consent automatically:
+### Docker
 
 ```bash
-# Set your variables
-SUBSCRIPTION_ID="YOUR_SUBSCRIPTION_ID"
-RESOURCE_GROUP="YOUR_RESOURCE_GROUP"
-SP_NAME="sp-sentinel-ai-soc-agent"
-
-# 1. Create Service Principal
-SP_JSON=$(az ad sp create-for-rbac --name "$SP_NAME" --skip-assignment --output json)
-APP_ID=$(echo "$SP_JSON" | jq -r '.appId')
-CLIENT_SECRET=$(echo "$SP_JSON" | jq -r '.password')
-TENANT_ID=$(echo "$SP_JSON" | jq -r '.tenant')
-
-echo "App ID: $APP_ID"
-echo "Tenant ID: $TENANT_ID"
-
-# 2. Assign Azure RBAC Roles on Resource Group
-SCOPE="/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP"
-
-az role assignment create --assignee "$APP_ID" --role "Microsoft Sentinel Responder" --scope "$SCOPE"
-az role assignment create --assignee "$APP_ID" --role "Log Analytics Reader" --scope "$SCOPE"
-az role assignment create --assignee "$APP_ID" --role "Logic App Contributor" --scope "$SCOPE"
-
-# 3. Add Microsoft Graph API Permissions (User.Read.All & User.ReadWrite.All)
-GRAPH_APP_ID="00000003-0000-0000-c000-000000000000"
-USER_READ_ALL="df021247-61c5-41a9-9423-5ad04d43d864"
-USER_READWRITE_ALL="741f803b-c850-494e-b5df-cde7c675a1ca"
-
-az ad app permission add --id "$APP_ID" --api "$GRAPH_APP_ID" --api-permissions "$USER_READ_ALL=Role" "$USER_READWRITE_ALL=Role"
-az ad app permission grant --id "$APP_ID" --api "$GRAPH_APP_ID"
-az ad app permission admin-consent --id "$APP_ID"
-
-echo "✅ Service Principal configured successfully! Copy App ID, Secret, and Tenant ID to backend/.env."
+docker compose up --build
 ```
 
+Secrets come from `backend/.env`; the database is on a named volume. Note that
+`USE_MANAGED_IDENTITY` resolves to a local `az login` session that does not exist inside a
+container — in Docker the app runs with a live model over simulated incidents unless a real
+managed identity is available, and it says so.
+
 ---
 
-## 🏗️ System Architecture
+## Known limitations
 
-```mermaid
-flowchart TD
-    subgraph Client_Layer ["🖥️ Presentation Layer (React 18 + Vite + Tailwind CSS)"]
-        UI_Dash["Incident Queue & Live Metrics"]
-        UI_Stream["Live Investigation Stream (WebSockets)"]
-        UI_KQL["Interactive KQL Generator & Live Runner"]
-        UI_Playbook["Azure Logic Apps / SOAR Playbook Selector"]
-        UI_Assign["Entra ID SOC Engineer Assignment"]
-        UI_Close["NIST Incident Closure & Classification Modal"]
-        UI_Report["Executive Briefing Viewer & PDF/MD Exporter"]
-    end
+- **Single instance.** SQLite is a single-writer store, so the Kubernetes manifest is pinned
+  to one replica. Scaling out means moving [`db.py`](backend/app/db.py) to PostgreSQL; the
+  storage layer is isolated there for that reason.
+- **Benchmark scope.** 56 incidents is a starting point, and the decisive context is written
+  into each incident's description. A stronger benchmark would place that context in
+  queryable data so the agent has to *find* the change ticket rather than read it.
+- **Evidence completeness is not a probability.** It reports how much of the required
+  evidence was available. It is not, and after three rounds of tuning does not look like it
+  will become, a reliable estimate of whether the verdict is correct.
+- **Endpoint and identity containment depend on licensing** you may not have. Those actions
+  fail loudly rather than silently.
 
-    subgraph API_Layer ["⚡ Application & Security Gateway (FastAPI + Python 3.11)"]
-        Auth["Zero-Trust Auth & Ephemeral Credential Engine"]
-        IncidentsAPI["/api/incidents (ARM Sync, Comments, Tags)"]
-        TriageAPI["/api/triage (Live Stream, RCA Synthesis, Chat)"]
-        KQL_API["/api/triage/kql/run (KQL Execution)"]
-        SettingsAPI["/api/settings (Model Routing & Telemetry)"]
-        ReportGen["Executive Report Generator (PDF / MD / JSON + Hash)"]
-    end
+---
 
-    subgraph AI_Core ["🧠 Autonomous Cognitive Reasoning Engine (ReAct Loop)"]
-        Agent["SentinelTriageAgent (ReAct Decision Loop)"]
-        Router{"Hybrid Model Router (Heuristic Engine)"}
-        FastTier["Fast Triage Tier (gpt-4o-mini ~80% volume)"]
-        DeepTier["Deep Forensic Tier (gpt-6-astra ~20% volume)"]
-        Tools["Agent Tools: Entity Extractor • Threat Intel • KQL Runner"]
-    end
+## Layout
 
-    subgraph Azure_Ecosystem ["☁️ Microsoft Azure & External Intelligence Ecosystem"]
-        Sentinel["Microsoft Sentinel (ARM REST API)"]
-        LogAnalytics["Azure Log Analytics (LogsQueryClient / KQL)"]
-        EntraID["Microsoft Entra ID (Microsoft Graph API)"]
-        LogicApps["Azure Logic Apps (8 Enterprise SOAR Workflows)"]
-        ThreatIntel["Threat Intelligence (AbuseIPDB • VirusTotal • MDTI)"]
-    end
-
-    %% Client to API
-    Client_Layer <-->|HTTPS REST & WebSockets| API_Layer
-    Auth --- IncidentsAPI
-    Auth --- TriageAPI
-
-    %% API to AI Core & Services
-    TriageAPI --> Agent
-    IncidentsAPI --> ReportGen
-    Agent --> Router
-    Router -->|Routine Alerts| FastTier
-    Router -->|High Severity / Multi-Stage / APT| DeepTier
-    Agent --> Tools
-
-    %% Integrations
-    Tools -->|Query Telemetry| LogAnalytics
-    Tools -->|Reputation Check| ThreatIntel
-    IncidentsAPI -->|Fetch / Update / Comment| Sentinel
-    IncidentsAPI -->|Query Engineers / Revoke Tokens| EntraID
-    IncidentsAPI -->|Trigger Automated Containment| LogicApps
+```
+backend/
+  app/
+    agent/         triage agent, adaptive investigator, KQL guard, prompts, tools
+    api/           incidents, triage, settings, auth
+    services/      sentinel client, KQL runner, threat intel, remediation,
+                   poller, report generators
+    middleware/    rate limiting
+    db.py          users, triage reports, audit log
+  evals/           labelled dataset and evaluation harness
+  tests/           30 tests
+frontend/src/      React console
+aks/               Kubernetes manifests incl. PVC
 ```
 
-### Architectural Subsystems
+## Licence
 
-1. **🖥️ Presentation Layer (React 18 + Vite SPA):**
-   - High-throughput SOC triage dashboard with live filtering by status, severity, and timeframe.
-   - Real-time WebSocket connection to the backend ReAct agent stream.
-   - Interactive modal interfaces for **Azure Logic Apps SOAR Playbook execution**, **Entra ID live user assignment**, and **NIST-compliant incident classification & closure**.
-   - AI-powered Natural Language $\rightarrow$ KQL generator with live query execution against Log Analytics.
-
-2. **⚡ Application & Security Gateway (FastAPI + Python 3.11):**
-   - Async REST APIs & WebSocket handlers with stateless JWT authentication.
-   - **Zero-Trust Security:** Ephemeral startup passwords with mandatory first-login password reset.
-   - **Executive Briefing Engine:** Synthesizes publication-grade PDF reports (formatted with WeasyPrint), Markdown, and JSON with dynamic AI model stamps and SHA-256 signature verification hashes.
-
-3. **🧠 Autonomous Cognitive Reasoning Engine (ReAct + Hybrid Router):**
-   - **Intelligent Hybrid Model Segregation:** Automatically routes ~80% of routine alerts to `gpt-4o-mini` (sub-second latency, low token cost) and escalates ~20% of high-severity, multi-stage, or APT-pattern attacks to `gpt-6-astra` for deep forensic root-cause analysis.
-   - Executes multi-turn ReAct loops extracting entities, correlating external threat intelligence, synthesizing dynamic KQL hunting queries, and calculating True/False Positive probabilities.
-
-4. **☁️ Microsoft Azure & External Intelligence Ecosystem:**
-   - **Microsoft Sentinel (ARM REST API):** Incident lifecycle management, bi-directional status updates, structured investigation comments, and automated tagging (`Playbook:<Name>`, `SOAR-Automated`).
-   - **Azure Log Analytics (`LogsQueryClient`):** High-speed telemetry execution across `SigninLogs`, `DeviceProcessEvents`, `DeviceNetworkEvents`, `SecurityEvent`.
-   - **Microsoft Entra ID (Graph API):** Live SOC directory querying (`User.Read.All`) and active session revocation / account containment (`User.ReadWrite.All`).
-   - **Azure Logic Apps & SOAR Playbooks:** 8 enterprise workflows for automated host isolation, session revocation, firewall blocking, and ITSM ServiceNow ticketing.
-   - **Threat Intelligence:** Multi-source reputation lookups across AbuseIPDB, VirusTotal, and Microsoft Defender Threat Intelligence (MDTI).
-
----
-
-## ✨ Key Platform Capabilities
-
-- **Intelligent Hybrid AI Model Segregation**:
-  - Dynamically routes routine, single-alert low-severity triage (~80% volume) to `gpt-4o-mini` for maximum token economy.
-  - Automatically escalates complex, multi-stage, high/critical incidents (~20% volume) to `gpt-6-astra` for deep forensic reasoning.
-  - Stamped on all Executive Brief reports (PDF, Markdown, JSON).
-- **Interactive Azure Logic Apps & SOAR Playbook Selector**:
-  - Live discovery of Azure Logic Apps (`Microsoft.Logic/workflows`) and built-in Sentinel SOAR playbooks.
-  - 1-click execution with target entity context (IPs, Hosts, Accounts), custom execution notes, unique run IDs, and automated Sentinel audit comments.
-- **Autonomous Multi-Step Incident Triage**:
-  - Extracts incident entities (Users, IPs, Hostnames, Hashes, Processes).
-  - Generates & executes contextual KQL queries across `SigninLogs`, `DeviceProcessEvents`, `DeviceNetworkEvents`, `SecurityEvent`.
-  - Performs multi-source Threat Intelligence lookups (AbuseIPDB, VirusTotal, MDTI).
-  - Assesses **True Positive vs False Positive** probability and maps to **MITRE ATT&CK tactics & techniques**.
-  - Synchronizes structured investigation reports as comments to Microsoft Sentinel.
-- **Interactive SOC Workbench**:
-  - Live execution trace stream (watch the agent's real-time thoughts and tool calls).
-  - Interactive AI KQL Query Generator with 1-click live execution against Log Analytics.
-  - Entra ID engineer assignment dropdown synced with live tenant directory.
-  - Mandatory Close & Classify modal with dynamic reasons and closing audit notes.
-- **Production AKS & Cloud Ready**:
-  - Includes enterprise Kubernetes manifests (`aks/`) with non-root security context.
-  - Multi-stage container architecture with security-hardened Alpine/Debian base and automated deployment scripts.
-
----
-
-## 🐳 Docker Container Deployment
-
-Run the complete multi-stage container locally using Docker Compose:
-
-```bash
-docker-compose up --build
-```
-Access the dashboard at `http://localhost:8000`.
-
----
-
-## ☸️ Azure Kubernetes Service (AKS) Deployment
-
-Automated 1-click deployment scripts are located in `aks/`:
-
-```powershell
-# PowerShell (Windows)
-cd aks
-.\deploy-to-aks.ps1 -SubscriptionId "<SUB_ID>" -ResourceGroup "<RG>" -AksClusterName "<AKS_NAME>" -AcrName "<ACR_NAME>"
-
-# Bash (macOS / Linux)
-cd aks
-chmod +x deploy-to-aks.sh
-./deploy-to-aks.sh "<SUB_ID>" "<RG>" "<AKS_NAME>" "<ACR_NAME>"
-```
-
----
-
-## 🧪 Testing & Verification
-
-Run the full pytest automated test suite:
-
-```bash
-PYTHONPATH=backend ./backend/venv/bin/pytest backend/tests/ -v
-```
-
-```text
-============================= test session starts ==============================
-collected 15 items
-
-backend/tests/test_agent.py::test_triage_agent_execution PASSED          [  6%]
-backend/tests/test_agent.py::test_hybrid_model_selection PASSED          [ 13%]
-backend/tests/test_agent.py::test_override_routing_modes PASSED          [ 20%]
-backend/tests/test_auth.py::test_login_success PASSED                    [ 26%]
-backend/tests/test_auth.py::test_login_invalid_password PASSED           [ 33%]
-backend/tests/test_auth.py::test_first_login_password_reset PASSED       [ 40%]
-backend/tests/test_auth.py::test_protected_route_requires_auth PASSED    [ 46%]
-backend/tests/test_report_generator.py::test_generate_pdf_report PASSED  [ 53%]
-backend/tests/test_report_generator.py::test_generate_docx_report PASSED [ 60%]
-backend/tests/test_sentinel.py::test_list_incidents PASSED               [ 66%]
-backend/tests/test_sentinel.py::test_threat_intel_private_ip PASSED      [ 73%]
-backend/tests/test_sentinel.py::test_threat_intel_malicious_ip PASSED    [ 80%]
-backend/tests/test_sentinel.py::test_kql_execution PASSED                [ 86%]
-backend/tests/test_sentinel.py::test_get_playbooks PASSED                [ 93%]
-backend/tests/test_sentinel.py::test_trigger_playbook PASSED             [100%]
-
-======================== 15 passed, 2 warnings in 4.80s ========================
-```
-
----
-
-## 🛡️ Security & SBOM Compliance
-
-- **Software Bill of Materials (SBOM)**: CycloneDX v1.5 JSON cataloged in [`sbom-cyclonedx.json`](sbom-cyclonedx.json).
-- **Vulnerability Auditing**: 0 Known Vulnerabilities / CVEs audited via Grype.
-- **Container Hardening**: Non-root UID 10001 runtime execution with read-only root filesystems and dropped Linux capabilities.
-
----
-
-## 📜 License
-
-Distributed under the **MIT License**. See `LICENSE` for more information.
-
----
-
-<div align="center">
-Developed by <strong>Ankush Chouhan</strong> • Built for Next-Generation Autonomous Cloud SecOps.
-</div>
+MIT — see [LICENSE](LICENSE).

@@ -1,6 +1,6 @@
 """
 ===================================================================
-Microsoft Sentinel AI SOC Agent - Executive Report Generator Service
+Microsoft Warden SOC Agent - Executive Report Generator Service
 Generates publication-ready Microsoft Word (.docx), print-ready HTML/PDF,
 and Markdown executive incident forensic & triage reports.
 ===================================================================
@@ -69,7 +69,7 @@ def generate_docx_report(
     severity = str(report.get("severity_assessment") or incident.get("severity") or "Medium")
     created_time = incident.get("createdTimeUtc", datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"))
     verdict = report.get("verdict", "TRUE_POSITIVE")
-    confidence = report.get("confidence_score", 90)
+    confidence = report.get("evidence_completeness", report.get("confidence_score", 90))
     rca = report.get("root_cause_analysis", {})
 
     # Verdict Colors
@@ -200,7 +200,7 @@ def generate_docx_report(
     vr2.font.bold = True
     vr2.font.color.rgb = v_rgb
 
-    vr3 = vp.add_run(f"AI Confidence Score: {confidence}%  |  Classification State: Validated")
+    vr3 = vp.add_run(f"Evidence Completeness: {confidence}%  |  Classification State: Validated")
     vr3.font.size = Pt(9)
     vr3.font.color.rgb = RGBColor(0x37, 0x41, 0x51)
 
@@ -461,7 +461,7 @@ def generate_html_report(
     created_time = incident.get("createdTimeUtc", datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"))
     severity = str(report.get("severity_assessment") or incident.get("severity") or "Medium")
     verdict = report.get("verdict", "TRUE_POSITIVE")
-    confidence = report.get("confidence_score", 90)
+    confidence = report.get("evidence_completeness", report.get("confidence_score", 90))
     rca = report.get("root_cause_analysis", {})
 
     v_color = "#DC2626" if verdict == "TRUE_POSITIVE" else "#059669" if verdict == "FALSE_POSITIVE" else "#D97706"
@@ -535,8 +535,9 @@ def generate_html_report(
       <div style="font-size:8.5px; font-weight:700; color:{v_color}; text-transform:uppercase;">AI FORENSIC VERDICT</div>
       <div style="font-size:14px; font-weight:900; color:{v_color};">{verdict.replace('_', ' ')}</div>
     </div>
-    <div style="font-size:22px; font-weight:900; font-family:'JetBrains Mono', monospace; color:{v_color};">
-      {confidence}%
+    <div style="text-align:right;">
+      <div style="font-size:8.5px; font-weight:700; color:#64748B; text-transform:uppercase;">Evidence Completeness</div>
+      <div style="font-size:22px; font-weight:900; font-family:'JetBrains Mono', monospace; color:{v_color};">{confidence}%</div>
     </div>
   </div>
 
@@ -569,7 +570,7 @@ def generate_html_report(
   </div>
 
   <div class="footer">
-    <span>Microsoft Sentinel AI SOC Agent • Executive Incident Brief</span>
+    <span>Microsoft Warden SOC Agent • Executive Incident Brief</span>
     <span>CONFIDENTIAL & PROPRIETARY</span>
   </div>
 </body>

@@ -1,14 +1,14 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: sentinel-soc-ingress
-  namespace: sentinel-soc
+  name: warden-ingress
+  namespace: warden
   annotations:
     kubernetes.io/ingress.class: nginx
     nginx.ingress.kubernetes.io/proxy-body-size: "64m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-    nginx.ingress.kubernetes.io/websocket-services: "sentinel-soc-service"
+    nginx.ingress.kubernetes.io/websocket-services: "warden-service"
 spec:
   rules:
     - host: soc.sentinel-ai.local
@@ -18,6 +18,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: sentinel-soc-service
+                name: warden-service
                 port:
                   number: 80

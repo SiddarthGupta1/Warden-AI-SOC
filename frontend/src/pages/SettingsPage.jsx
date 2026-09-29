@@ -87,11 +87,11 @@ export default function SettingsPage({ user }) {
     llm_provider: 'azure_openai',
     azure_openai_endpoint: '',
     azure_openai_api_key: '',
-    azure_openai_deployment_name: 'gpt-4o',
+    azure_openai_deployment_name: '',
     openai_api_key: '',
     llm_routing_mode: 'hybrid',
-    fast_model_name: 'gpt-4o-mini',
-    reasoning_model_name: 'gpt-6-astra',
+    fast_model_name: '',
+    reasoning_model_name: '',
 
     // Toggles
     demo_mode: true,
@@ -122,11 +122,11 @@ export default function SettingsPage({ user }) {
         llm_provider: data.llm_engine?.provider || 'azure_openai',
         azure_openai_endpoint: data.llm_engine?.endpoint || '',
         azure_openai_api_key: '',
-        azure_openai_deployment_name: data.llm_engine?.deployment || 'gpt-4o',
+        azure_openai_deployment_name: data.llm_engine?.deployment || '',
         openai_api_key: '',
         llm_routing_mode: data.llm_engine?.routing_mode || 'hybrid',
-        fast_model_name: data.llm_engine?.fast_model || 'gpt-4o-mini',
-        reasoning_model_name: data.llm_engine?.reasoning_model || 'gpt-6-astra',
+        fast_model_name: data.llm_engine?.fast_model || '',
+        reasoning_model_name: data.llm_engine?.reasoning_model || '',
 
         demo_mode: data.demo_mode ?? true,
         auto_post_comments: data.auto_triage?.auto_post_comments ?? true,
@@ -519,7 +519,7 @@ export default function SettingsPage({ user }) {
                       <span>⚡ Intelligent Hybrid Routing (Recommended)</span>
                     </div>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
-                      Auto-routes ~80% routine & low-severity alerts to <code className="text-indigo-600 dark:text-indigo-400 font-bold">gpt-4o-mini</code> (fast & low-cost), and escalates ~20% complex multi-stage attacks to <code className="text-purple-600 dark:text-purple-400 font-bold">gpt-6-astra</code> (deep forensic reasoning).
+                      Routes routine and low-severity alerts to the <strong>fast</strong> model configured below, and escalates high-severity, multi-alert or multi-stage incidents to the <strong>reasoning</strong> model.
                     </p>
                   </div>
                 </label>
@@ -539,7 +539,7 @@ export default function SettingsPage({ user }) {
                     className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
                   />
                   <div>
-                    <div className="font-bold">⚡ Always Fast (gpt-4o-mini)</div>
+                    <div className="font-bold">⚡ Always Fast Model</div>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                       Forces all triage through low-latency model for maximum cost savings and sub-second execution.
                     </p>
@@ -561,7 +561,7 @@ export default function SettingsPage({ user }) {
                     className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
                   />
                   <div>
-                    <div className="font-bold">🧠 Always Deep Reasoning (gpt-6-astra)</div>
+                    <div className="font-bold">🧠 Always Reasoning Model</div>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                       Forces exhaustive multi-step reasoning and root-cause analysis for every incident.
                     </p>
@@ -580,7 +580,7 @@ export default function SettingsPage({ user }) {
                   disabled={!isAdmin}
                   value={formData.fast_model_name}
                   onChange={(e) => setFormData({ ...formData, fast_model_name: e.target.value })}
-                  placeholder="e.g. gpt-4o-mini"
+                  placeholder="your fast-tier deployment name"
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg text-xs font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                 />
               </div>
@@ -594,7 +594,7 @@ export default function SettingsPage({ user }) {
                   disabled={!isAdmin}
                   value={formData.reasoning_model_name}
                   onChange={(e) => setFormData({ ...formData, reasoning_model_name: e.target.value })}
-                  placeholder="e.g. gpt-6-astra"
+                  placeholder="your reasoning-tier deployment name"
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg text-xs font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                 />
               </div>
@@ -771,7 +771,7 @@ export default function SettingsPage({ user }) {
                   disabled={!isAdmin}
                   value={formData.azure_workspace_name}
                   onChange={(e) => setFormData({ ...formData, azure_workspace_name: e.target.value })}
-                  placeholder="law-sentinel-soc"
+                  placeholder="law-warden"
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg text-xs font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500 disabled:bg-slate-100 dark:disabled:bg-slate-900/50 disabled:cursor-not-allowed"
                 />
               </div>

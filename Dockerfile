@@ -33,9 +33,14 @@ COPY backend/app/ ./app
 # Copy Built Frontend from Stage 1
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Create non-root user for enterprise AKS security standard
+# Create non-root user for enterprise AKS security standard.
+# /data must exist in the image and be owned by appuser BEFORE the volume is
+# mounted: Docker seeds a new named volume from the image's directory at that
+# path, ownership included. Without this the volume is created root-owned and
+# the non-root process cannot create its SQLite database.
 RUN useradd -u 10001 -m -s /bin/sh appuser && \
-    chown -R appuser:appuser /app
+    mkdir -p /data && \
+    chown -R appuser:appuser /app /data
 USER appuser
 
 EXPOSE 8000

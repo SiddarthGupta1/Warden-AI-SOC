@@ -1,0 +1,35 @@
+# Environment / secrets
+.env
+*.env
+!.env.example
+backend/.env
+aks/secret.yaml
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Local database (users, triage reports, audit trail)
+*.db
+*.db-wal
+*.db-shm
+backend/data/
+
+# Generated SBOMs (produced by CI, published as build artifacts)
+sbom/

@@ -13,7 +13,7 @@ MOCK_INCIDENT = {
 
 MOCK_REPORT = {
     "verdict": "TRUE_POSITIVE",
-    "confidence_score": 95,
+    "evidence_completeness": 95,
     "severity_assessment": "High",
     "model_used": "gpt-6-astra",
     "reasoning_tier": "deep_reasoning",

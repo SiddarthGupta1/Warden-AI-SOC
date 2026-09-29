@@ -1,5 +1,5 @@
 {
-  "name": "sentinel-soc-agent-ui",
+  "name": "warden-ui",
   "private": true,
   "version": "1.0.0",
   "type": "module",

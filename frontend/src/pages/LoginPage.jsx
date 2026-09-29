@@ -13,6 +13,14 @@ export default function LoginPage({ onLoginSuccess, theme, toggleTheme }) {
   const [error, setError] = useState('');
   const [infoMessage, setInfoMessage] = useState('');
 
+  // Set by the API layer when a request returns 401. Read once and cleared so the
+  // notice does not persist across a later, deliberate sign-out.
+  const [sessionExpired] = useState(() => {
+    const flag = sessionStorage.getItem('warden_session_expired') === '1';
+    if (flag) sessionStorage.removeItem('warden_session_expired');
+    return flag;
+  });
+
   const handleLoginSubmit = async (e) => {
     e?.preventDefault();
     setError('');
@@ -85,17 +93,63 @@ export default function LoginPage({ onLoginSuccess, theme, toggleTheme }) {
         </div>
       )}
 
-      <div className="w-full max-w-md relative z-10">
+      <div className="w-full max-w-5xl relative z-10 grid lg:grid-cols-[1.05fr_minmax(0,26rem)] gap-10 lg:gap-14 items-center">
+        {/* Brand panel. Hidden below lg so the form stays the whole screen on mobile. */}
+        <div className="hidden lg:block">
+          <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-300 text-[11px] font-semibold tracking-wide mb-6">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>AUTONOMOUS TRIAGE · MICROSOFT SENTINEL</span>
+          </div>
+
+          <h1 className="text-4xl xl:text-5xl font-black leading-[1.08] tracking-tight text-slate-900 dark:text-white">
+            Investigate every alert.
+            <span className="block bg-gradient-to-r from-blue-500 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+              Verify every action.
+            </span>
+          </h1>
+
+          <p className="mt-5 text-sm leading-relaxed text-slate-600 dark:text-slate-400 max-w-lg">
+            An AI analyst that enriches entities against live threat intelligence, writes and runs
+            its own KQL against Log Analytics, and reports what it could <em>not</em> verify as
+            plainly as what it found.
+          </p>
+
+          <div className="mt-8 grid grid-cols-3 gap-3 max-w-lg">
+            {[
+              { k: 'Adaptive', v: 'Writes its own hunting queries and follows leads' },
+              { k: 'Verified', v: 'Containment confirmed by read-back, never assumed' },
+              { k: 'Measured', v: 'Accuracy benchmarked against a labelled dataset' },
+            ].map((f) => (
+              <div
+                key={f.k}
+                className="rounded-xl border border-slate-200 dark:border-slate-800/80 bg-white/60 dark:bg-slate-900/40 backdrop-blur p-3"
+              >
+                <div className="text-[11px] font-bold text-slate-900 dark:text-slate-100">{f.k}</div>
+                <div className="text-[10px] leading-snug text-slate-500 dark:text-slate-400 mt-1">{f.v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Card */}
-        <div className="bg-white/95 dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-8 shadow-2xl backdrop-blur-xl transition-colors duration-200">
+        <div className="w-full bg-white/95 dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800/80 rounded-2xl p-8 shadow-2xl backdrop-blur-xl transition-colors duration-200">
           {/* Header Logo */}
           <div className="flex flex-col items-center justify-center mb-8 text-center">
             <div className="mb-3">
               <Logo className="h-10" />
             </div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-wide">Sentinel AI SOC</h1>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-wide">Warden SOC</h1>
             <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mt-1">Autonomous Incident Triage Platform</p>
           </div>
+
+          {/* Explains an involuntary return to this screen. The backend issues a new
+              signing key on restart when SECRET_KEY is unset, which ends all sessions. */}
+          {sessionExpired && (
+            <div className="mb-5 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs flex items-start space-x-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>Your session ended and you were signed out. This happens when the token expires or the backend restarts.</span>
+            </div>
+          )}
 
           {infoMessage && (
             <div className="mb-5 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 text-xs flex items-center space-x-2">

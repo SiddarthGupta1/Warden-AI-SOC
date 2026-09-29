@@ -103,7 +103,7 @@ export default function LiveInvestigationStream({ events, isRunning }) {
                   {evt.details.verdict && (
                     <div className="text-emerald-400">
                       <span className="text-slate-500">Verdict: </span>
-                      {evt.details.verdict} (Confidence: {evt.details.confidence_score}%)
+                      {evt.details.verdict} (Evidence completeness: {evt.details.evidence_completeness}%)
                     </div>
                   )}
                   {evt.details.tables && (

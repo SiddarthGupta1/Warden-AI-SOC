@@ -1,0 +1,406 @@
+{
+  "summary": {
+    "run_at": "2026-09-28T19:21:18.926847+00:00",
+    "model": "gpt-5-mini",
+    "provider": "azure_openai",
+    "demo_mode": false,
+    "incidents": 12,
+    "llm_backed": true,
+    "accuracy": 0.75,
+    "correct": 9,
+    "agent_errors": 0,
+    "missed_threats": 0,
+    "missed_threat_rate": 0.0,
+    "false_alarms": 0,
+    "false_alarm_rate": 0.0,
+    "technique_recall_mean": 0.8571428571428571,
+    "technique_precision_mean": 0.680952380952381,
+    "latency_mean_s": 34.62,
+    "latency_median_s": 35.23,
+    "confidence_when_correct": 87.2,
+    "confidence_when_wrong": 90,
+    "tokens": {
+      "prompt": 23234,
+      "completion": 36741,
+      "reasoning": 15936,
+      "llm_calls": 12,
+      "per_incident": 4998
+    },
+    "estimated_cost_usd": null,
+    "confusion_matrix": {
+      "TRUE_POSITIVE": {
+        "TRUE_POSITIVE": 5
+      },
+      "FALSE_POSITIVE": {
+        "FALSE_POSITIVE": 3
+      },
+      "BENIGN": {
+        "FALSE_POSITIVE": 2
+      },
+      "SUSPICIOUS_ESCALATE": {
+        "TRUE_POSITIVE": 1,
+        "SUSPICIOUS_ESCALATE": 1
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "eval-001",
+      "title": "Suspicious PowerShell Invocations with Encoded Arguments from Word Process",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1027",
+        "T1059.001",
+        "T1566.001"
+      ],
+      "predicted_techniques": [
+        "T1027",
+        "T1059.001",
+        "T1071.001",
+        "T1204.002",
+        "T1566.001"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 0.6,
+      "latency_s": 42.03,
+      "usage": {
+        "prompt_tokens": 2186,
+        "completion_tokens": 3268,
+        "reasoning_tokens": 1344,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Office process spawning hidden encoded PowerShell with egress to a high-reputation-risk IP is textbook macro-borne execution."
+    },
+    {
+      "id": "eval-002",
+      "title": "Impossible Travel and Risky Sign-in from Tor Exit Node",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 85,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1078.004",
+        "T1550.01"
+      ],
+      "predicted_techniques": [
+        "T1078",
+        "T1078.004",
+        "T1621"
+      ],
+      "technique_recall": 0.5,
+      "technique_precision": 0.3333333333333333,
+      "latency_s": 37.65,
+      "usage": {
+        "prompt_tokens": 1607,
+        "completion_tokens": 3485,
+        "reasoning_tokens": 1600,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Successful auth from a Tor exit node 15 minutes after a domestic login, with no VPN record, is account compromise."
+    },
+    {
+      "id": "eval-003",
+      "title": "Mass File Encryption Activity with Shadow Copy Deletion",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1486",
+        "T1490"
+      ],
+      "predicted_techniques": [
+        "T1059.003",
+        "T1078",
+        "T1486",
+        "T1490"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 0.5,
+      "latency_s": 37.87,
+      "usage": {
+        "prompt_tokens": 1989,
+        "completion_tokens": 3449,
+        "reasoning_tokens": 1472,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Mass file rename with shadow copy deletion is ransomware detonation."
+    },
+    {
+      "id": "eval-004",
+      "title": "Kerberoasting - Anomalous Service Ticket Requests with RC4 Encryption",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1078",
+        "T1558.003"
+      ],
+      "predicted_techniques": [
+        "T1558.003"
+      ],
+      "technique_recall": 0.5,
+      "technique_precision": 1.0,
+      "latency_s": 38.25,
+      "usage": {
+        "prompt_tokens": 1979,
+        "completion_tokens": 3515,
+        "reasoning_tokens": 1600,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Bulk Kerberos service ticket requests with RC4 downgrade from a workstation is kerberoasting."
+    },
+    {
+      "id": "eval-005",
+      "title": "Bulk SharePoint Download Followed by Personal Cloud Storage Upload",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1530",
+        "T1567.002"
+      ],
+      "predicted_techniques": [
+        "T1530",
+        "T1567.002"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 45.2,
+      "usage": {
+        "prompt_tokens": 2112,
+        "completion_tokens": 3069,
+        "reasoning_tokens": 1216,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Large-volume download from SharePoint followed by upload to personal cloud storage by a departing employee is exfiltration."
+    },
+    {
+      "id": "eval-006",
+      "title": "Port Scanning and Vulnerability Probing Against DMZ Web Application",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1046"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 26.89,
+      "usage": {
+        "prompt_tokens": 2122,
+        "completion_tokens": 2786,
+        "reasoning_tokens": 1216,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Source IP is the documented Nessus scanner in the asset inventory, running an approved scan window with a change ticket."
+    },
+    {
+      "id": "eval-007",
+      "title": "Encoded PowerShell Execution Across Multiple Servers",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1059.001",
+        "T1078"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 31.68,
+      "usage": {
+        "prompt_tokens": 2060,
+        "completion_tokens": 2945,
+        "reasoning_tokens": 1216,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Encoded PowerShell originates from the documented SCCM jump box under an approved change window, executed by a platform engineering service account."
+    },
+    {
+      "id": "eval-008",
+      "title": "Impossible Travel Alert - Sign-in from Two Countries",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 95,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1078"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 36.42,
+      "usage": {
+        "prompt_tokens": 2117,
+        "completion_tokens": 2846,
+        "reasoning_tokens": 1344,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Geographic anomaly is fully explained by the corporate VPN egress gateway; device is compliant and the session is continuous."
+    },
+    {
+      "id": "eval-009",
+      "title": "Credential Dumping Tooling Detected on Domain Controller",
+      "expected": "BENIGN",
+      "predicted": "FALSE_POSITIVE",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 95,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1003.001"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 29.91,
+      "usage": {
+        "prompt_tokens": 2128,
+        "completion_tokens": 2829,
+        "reasoning_tokens": 1344,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Authorized red-team engagement with signed rules of engagement. The credential dumping genuinely occurred, so this is a benign positive (real but expected activity), not a false positive (detection logic was wrong). Originally mislabeled FALSE_POSITIVE in the v1 dataset; corrected after the model's disagreement proved better-grounded in Microsoft's TruePositive/BenignPositive/FalsePositive taxonomy."
+    },
+    {
+      "id": "eval-010",
+      "title": "Password Spray Attempts with Single Successful Authentication",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 85,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1110.003"
+      ],
+      "predicted_techniques": [
+        "T1110.003"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 30.29,
+      "usage": {
+        "prompt_tokens": 1521,
+        "completion_tokens": 2599,
+        "reasoning_tokens": 960,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Password spray from a residential IP followed by one success, but MFA held and no post-auth activity. Genuinely ambiguous - needs human review, not an autonomous verdict."
+    },
+    {
+      "id": "eval-011",
+      "title": "Global Administrator Role Assigned Outside Change Window",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 65,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1136.003"
+      ],
+      "predicted_techniques": [
+        "T1078",
+        "T1098",
+        "T1136.003"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 0.3333333333333333,
+      "latency_s": 34.05,
+      "usage": {
+        "prompt_tokens": 1440,
+        "completion_tokens": 3515,
+        "reasoning_tokens": 1536,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Privileged role assignment outside change control - could be a legitimate emergency or a persistence mechanism. Insufficient evidence either way."
+    },
+    {
+      "id": "eval-012",
+      "title": "Repeated Account Lockouts for Single User",
+      "expected": "BENIGN",
+      "predicted": "FALSE_POSITIVE",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1078",
+        "T1110"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 25.22,
+      "usage": {
+        "prompt_tokens": 1973,
+        "completion_tokens": 2435,
+        "reasoning_tokens": 1088,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Account lockouts traced to a stale cached credential on the user's own phone after a password change. Real activity, no adversary."
+    }
+  ]
+}

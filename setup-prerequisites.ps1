@@ -1,6 +1,6 @@
 # Automated Prerequisites Setup for Windows
 Write-Host "=================================================" -ForegroundColor Cyan
-Write-Host " Microsoft Sentinel AI SOC Agent - Setup" -ForegroundColor Cyan
+Write-Host " Microsoft Warden SOC Agent - Setup" -ForegroundColor Cyan
 Write-Host "=================================================" -ForegroundColor Cyan
 
 # 1. Check & Install Python

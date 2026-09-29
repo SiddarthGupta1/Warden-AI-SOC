@@ -3,6 +3,7 @@ import Navbar from './components/Navbar';
 import DashboardPage from './pages/DashboardPage';
 import SettingsPage from './pages/SettingsPage';
 import LoginPage from './pages/LoginPage';
+import ErrorBoundary from './components/ErrorBoundary';
 import { authApi } from './services/api';
 
 export default function App() {
@@ -13,7 +14,7 @@ export default function App() {
   
   // Theme State: 'dark' | 'light'
   const [theme, setTheme] = useState(() => {
-    const saved = localStorage.getItem('sentinel_theme');
+    const saved = localStorage.getItem('warden_theme');
     if (saved) return saved;
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'dark';
   });
@@ -24,7 +25,7 @@ export default function App() {
     } else {
       document.documentElement.classList.remove('dark');
     }
-    localStorage.setItem('sentinel_theme', theme);
+    localStorage.setItem('warden_theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {
@@ -32,7 +33,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('sentinel_token');
+    const token = localStorage.getItem('warden_token');
     if (token) {
       authApi.getCurrentUser()
         .then((userData) => {
@@ -40,7 +41,7 @@ export default function App() {
           setIsAuthenticated(true);
         })
         .catch(() => {
-          localStorage.removeItem('sentinel_token');
+          localStorage.removeItem('warden_token');
           setIsAuthenticated(false);
         })
         .finally(() => setLoading(false));
@@ -63,8 +64,14 @@ export default function App() {
     );
   }
 
+  // The login screen is inside a boundary too: a crash here would otherwise leave
+  // a blank page with no way back, and no session to sign out of.
   if (!isAuthenticated) {
-    return <LoginPage onLoginSuccess={handleLoginSuccess} theme={theme} toggleTheme={toggleTheme} />;
+    return (
+      <ErrorBoundary>
+        <LoginPage onLoginSuccess={handleLoginSuccess} theme={theme} toggleTheme={toggleTheme} />
+      </ErrorBoundary>
+    );
   }
 
   return (
@@ -76,9 +83,13 @@ export default function App() {
         theme={theme}
         toggleTheme={toggleTheme}
       />
+      {/* Keyed on the active tab so switching tabs clears a previous crash rather
+          than leaving the user stuck on the error screen. */}
       <main className="flex-1">
-        {activeTab === 'workbench' && <DashboardPage />}
-        {activeTab === 'settings' && <SettingsPage user={user} />}
+        <ErrorBoundary key={activeTab}>
+          {activeTab === 'workbench' && <DashboardPage />}
+          {activeTab === 'settings' && <SettingsPage user={user} />}
+        </ErrorBoundary>
       </main>
     </div>
   );

@@ -1,5 +1,6 @@
+from app import db
 from app.auth.jwt_handler import (
-    verify_password, get_password_hash, create_access_token, init_default_users, USERS_DB
+    verify_password, get_password_hash, create_access_token, init_default_users
 )
 from jose import jwt
 from app.config import settings
@@ -22,28 +23,42 @@ def test_jwt_token_generation():
     assert payload.get("sub") == "test_analyst"
     assert payload.get("role") == "analyst"
 
-def test_init_default_users():
-    users = init_default_users()
-    assert "soc_admin" in users
-    assert "analyst" in users
-    assert "tier1_analyst" in users
-    for uname, udata in users.items():
-        assert udata["hashed_password"] is not None
-        assert udata["must_reset_password"] is True
+def test_init_default_users_seeds_accounts():
+    init_default_users()
+    usernames = {u["username"] for u in db.list_users()}
+    assert {"soc_admin", "analyst", "tier1_analyst"} <= usernames
+    for name in ("soc_admin", "analyst", "tier1_analyst"):
+        assert db.get_user(name)["hashed_password"]
+
+
+def test_init_default_users_is_idempotent():
+    """
+    Seeding must not reissue credentials for accounts that already exist. The
+    previous in-memory store reseeded on every restart, silently invalidating
+    whatever password the user had set.
+    """
+    init_default_users()
+    before = db.get_user("soc_admin")["hashed_password"]
+    init_default_users()
+    after = db.get_user("soc_admin")["hashed_password"]
+    assert before == after, "re-seeding overwrote an existing account's password"
 
 def test_login_and_password_reset_flow():
     # Set up a clean test user
     test_user = "test_user_reset"
     temp_pwd = "TempPassword123!"
-    USERS_DB[test_user] = {
-        "username": test_user,
-        "full_name": "Test User",
-        "email": "test@corp.local",
-        "hashed_password": get_password_hash(temp_pwd),
-        "role": "analyst",
-        "disabled": False,
-        "must_reset_password": True,
-    }
+    db.init_db()
+    if db.user_exists(test_user):
+        db.set_password(test_user, get_password_hash(temp_pwd), must_reset_password=True)
+    else:
+        db.create_user(
+            username=test_user,
+            hashed_password=get_password_hash(temp_pwd),
+            role="analyst",
+            full_name="Test User",
+            email="test@corp.local",
+            must_reset_password=True,
+        )
 
     # 1. Login with temporary password should return 403 reset_required
     login_res = client.post("/api/auth/json-login", json={"username": test_user, "password": temp_pwd})
@@ -75,7 +90,7 @@ def test_login_and_password_reset_flow():
     })
     assert reset_res.status_code == 200
     assert "access_token" in reset_res.json()
-    assert USERS_DB[test_user]["must_reset_password"] is False
+    assert db.get_user(test_user)["must_reset_password"] is False
 
     # 5. Subsequent login with new password succeeds immediately
     subsequent_login = client.post("/api/auth/json-login", json={"username": test_user, "password": new_pwd})

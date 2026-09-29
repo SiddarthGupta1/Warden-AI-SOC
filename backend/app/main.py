@@ -14,6 +14,8 @@ from app.api.incidents import router as incidents_router
 from app.api.triage import router as triage_router, TRIAGE_REPORTS_CACHE
 from app.api.settings import router as settings_router
 from app.services.sentinel_client import sentinel_client
+from app.services import poller
+from app.middleware.rate_limit import RateLimitMiddleware
 from app.agent.triage_agent import triage_agent
 
 # Configure Logging
@@ -21,12 +23,18 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
-logger = logging.getLogger("sentinel_soc_agent")
+logger = logging.getLogger("warden")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_default_users()
-    yield
+    # Honours ENABLE_AUTO_POLLING / POLL_INTERVAL_SECONDS, which were previously
+    # read by the settings API but implemented nowhere.
+    poller.start()
+    try:
+        yield
+    finally:
+        await poller.stop()
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -34,6 +42,10 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# Rate limiting. Registered before CORS so that a 429 still carries CORS headers
+# and the browser can read the response rather than reporting an opaque failure.
+app.add_middleware(RateLimitMiddleware)
 
 # CORS Configuration
 app.add_middleware(

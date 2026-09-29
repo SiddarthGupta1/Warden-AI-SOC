@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: sentinel-soc-config
-  namespace: sentinel-soc
+  name: warden-config
+  namespace: warden
 data:
-  APP_NAME: "Microsoft Sentinel AI Triage Platform"
+  APP_NAME: "Warden"
   APP_ENV: "production"
   PORT: "8000"
   HOST: "0.0.0.0"

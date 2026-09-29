@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: sentinel-soc
+  name: warden
   labels:
-    app.kubernetes.io/name: sentinel-soc-agent
-    app.kubernetes.io/part-of: sentinel-soc-platform
+    app.kubernetes.io/name: warden-agent
+    app.kubernetes.io/part-of: warden-platform

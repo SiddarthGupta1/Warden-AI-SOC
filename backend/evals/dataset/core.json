@@ -1,0 +1,436 @@
+{
+  "schema_version": 1,
+  "description": "Labeled Sentinel incidents for triage-agent evaluation. Ground truth verdicts assigned from the contextual evidence embedded in each incident. False positives are deliberately written to look superficially alarming while carrying decisive benign context (change tickets, asset inventory, known scanners, VPN egress) so the benchmark measures contextual reasoning rather than keyword matching.",
+  "verdict_enum": ["TRUE_POSITIVE", "FALSE_POSITIVE", "SUSPICIOUS_ESCALATE", "BENIGN"],
+  "incidents": [
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1059.001", "T1027", "T1566.001"],
+        "severity": "High",
+        "rationale": "Office process spawning hidden encoded PowerShell with egress to a high-reputation-risk IP is textbook macro-borne execution."
+      },
+      "incident": {
+        "id": "eval-001",
+        "incidentNumber": 1001,
+        "title": "Suspicious PowerShell Invocations with Encoded Arguments from Word Process",
+        "description": "Microsoft Defender for Endpoint detected WINWORD.EXE launching powershell.exe with Base64 encoded payload and execution bypass flags. No change ticket associated. User is a non-technical finance employee.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["Execution", "DefenseEvasion", "InitialAccess"],
+        "techniques": ["T1059.001", "T1027", "T1566.001"],
+        "alertsCount": 3,
+        "alerts": [
+          {
+            "id": "al-1001-1",
+            "title": "Suspicious PowerShell Invocations with Encoded Arguments",
+            "description": "powershell.exe executed with hidden window and base64 encoded parameters from parent WINWORD.EXE process.",
+            "severity": "High",
+            "vendor": "Microsoft Defender for Endpoint",
+            "tactics": ["Execution", "DefenseEvasion"],
+            "techniques": ["T1059.001", "T1027"]
+          }
+        ],
+        "entities": [
+          {"kind": "Host", "name": "WKS-FIN-094", "os": "Windows 11 Enterprise"},
+          {"kind": "Account", "name": "jdoe@cybersecurity.corp", "upn": "jdoe@cybersecurity.corp"},
+          {"kind": "Ip", "address": "45.148.10.12", "direction": "Outbound", "location": "Frankfurt, Germany"},
+          {"kind": "Process", "processName": "powershell.exe", "commandLine": "powershell.exe -nop -w hidden -enc JABzACAAPQAgAE4AZQB3AC0ATwBiAGoAZQBjAHQA"}
+        ],
+        "labels": ["DefenderForEndpoint", "EncodedPowerShell"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1078.004", "T1550.01"],
+        "severity": "High",
+        "rationale": "Successful auth from a Tor exit node 15 minutes after a domestic login, with no VPN record, is account compromise."
+      },
+      "incident": {
+        "id": "eval-002",
+        "incidentNumber": 1002,
+        "title": "Impossible Travel and Risky Sign-in from Tor Exit Node",
+        "description": "User successfully authenticated from Austin, US and 15 minutes later from a known Tor Exit Node in Moscow, Russia. Corporate VPN logs show no active session for this user. MFA was satisfied via push notification on the second login.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["InitialAccess", "CredentialAccess"],
+        "techniques": ["T1078.004", "T1621"],
+        "alertsCount": 2,
+        "alerts": [
+          {
+            "id": "al-1002-1",
+            "title": "Sign-in from anonymous IP address (Tor Network)",
+            "description": "User signed in from IP associated with an active Tor exit node. Sign-in risk: High.",
+            "severity": "High",
+            "vendor": "Microsoft Entra ID Protection",
+            "tactics": ["InitialAccess"],
+            "techniques": ["T1078.004"]
+          }
+        ],
+        "entities": [
+          {"kind": "Account", "name": "mchen@cybersecurity.corp", "upn": "mchen@cybersecurity.corp"},
+          {"kind": "Ip", "address": "185.220.101.5", "direction": "Inbound", "location": "Moscow, Russia"},
+          {"kind": "Ip", "address": "70.114.22.8", "direction": "Inbound", "location": "Austin, US"}
+        ],
+        "labels": ["EntraIDProtection", "TorExitNode"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1486", "T1490"],
+        "severity": "High",
+        "rationale": "Mass file rename with shadow copy deletion is ransomware detonation."
+      },
+      "incident": {
+        "id": "eval-003",
+        "incidentNumber": 1003,
+        "title": "Mass File Encryption Activity with Shadow Copy Deletion",
+        "description": "File server observed renaming 12,400 files to .lockbit extension within 6 minutes. vssadmin.exe delete shadows /all /quiet executed immediately prior. Backup agent service stopped.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["Impact"],
+        "techniques": ["T1486", "T1490"],
+        "alertsCount": 4,
+        "alerts": [
+          {
+            "id": "al-1003-1",
+            "title": "Ransomware behaviour detected",
+            "description": "High-volume file modification consistent with ransomware encryption routine.",
+            "severity": "High",
+            "vendor": "Microsoft Defender for Endpoint",
+            "tactics": ["Impact"],
+            "techniques": ["T1486"]
+          }
+        ],
+        "entities": [
+          {"kind": "Host", "name": "SRV-FILE-01", "os": "Windows Server 2022"},
+          {"kind": "Account", "name": "svc_backup@cybersecurity.corp", "upn": "svc_backup@cybersecurity.corp"},
+          {"kind": "Process", "processName": "vssadmin.exe", "commandLine": "vssadmin.exe delete shadows /all /quiet"}
+        ],
+        "labels": ["Ransomware", "Impact"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1558.003", "T1078"],
+        "severity": "High",
+        "rationale": "Bulk Kerberos service ticket requests with RC4 downgrade from a workstation is kerberoasting."
+      },
+      "incident": {
+        "id": "eval-004",
+        "incidentNumber": 1004,
+        "title": "Kerberoasting - Anomalous Service Ticket Requests with RC4 Encryption",
+        "description": "Workstation requested 847 Kerberos service tickets (TGS) in under 3 minutes, all with RC4-HMAC encryption downgrade. Requesting account is a standard user with no administrative function. No vulnerability scan scheduled.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["CredentialAccess"],
+        "techniques": ["T1558.003"],
+        "alertsCount": 2,
+        "alerts": [
+          {
+            "id": "al-1004-1",
+            "title": "Suspected Kerberoasting attack",
+            "description": "Abnormal volume of TGS requests with weak encryption observed from a single endpoint.",
+            "severity": "High",
+            "vendor": "Microsoft Defender for Identity",
+            "tactics": ["CredentialAccess"],
+            "techniques": ["T1558.003"]
+          }
+        ],
+        "entities": [
+          {"kind": "Host", "name": "WKS-MKT-221", "os": "Windows 11 Enterprise"},
+          {"kind": "Account", "name": "rpatel@cybersecurity.corp", "upn": "rpatel@cybersecurity.corp"}
+        ],
+        "labels": ["DefenderForIdentity", "CredentialAccess"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1567.002", "T1530"],
+        "severity": "High",
+        "rationale": "Large-volume download from SharePoint followed by upload to personal cloud storage by a departing employee is exfiltration."
+      },
+      "incident": {
+        "id": "eval-005",
+        "incidentNumber": 1005,
+        "title": "Bulk SharePoint Download Followed by Personal Cloud Storage Upload",
+        "description": "User downloaded 3,200 files (14 GB) from the Engineering SharePoint site over 40 minutes, then uploaded 13.8 GB to a personal Dropbox account. HR records show the user submitted resignation 2 days prior. No DLP policy exemption on file.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["Collection", "Exfiltration"],
+        "techniques": ["T1530", "T1567.002"],
+        "alertsCount": 3,
+        "alerts": [
+          {
+            "id": "al-1005-1",
+            "title": "Mass download by a single user",
+            "description": "Anomalous volume of file downloads compared to user baseline (baseline: 12 files/day).",
+            "severity": "Medium",
+            "vendor": "Microsoft Defender for Cloud Apps",
+            "tactics": ["Collection"],
+            "techniques": ["T1530"]
+          }
+        ],
+        "entities": [
+          {"kind": "Account", "name": "kwilson@cybersecurity.corp", "upn": "kwilson@cybersecurity.corp"},
+          {"kind": "Host", "name": "LAP-ENG-330", "os": "Windows 11 Enterprise"},
+          {"kind": "Ip", "address": "162.125.248.1", "direction": "Outbound", "location": "Dropbox CDN"}
+        ],
+        "labels": ["InsiderRisk", "Exfiltration"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "FALSE_POSITIVE",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Source IP is the documented Nessus scanner in the asset inventory, running an approved scan window with a change ticket."
+      },
+      "incident": {
+        "id": "eval-006",
+        "incidentNumber": 1006,
+        "title": "Port Scanning and Vulnerability Probing Against DMZ Web Application",
+        "description": "Host 10.20.5.14 performed sequential port scans and injected known CVE probe payloads against the DMZ web farm. Source host 10.20.5.14 is registered in the CMDB as NESSUS-SCAN-01, the approved enterprise vulnerability scanner. Activity falls inside the approved monthly scan window (CHG-2026-0914) signed off by the infrastructure team.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["Discovery"],
+        "techniques": ["T1046"],
+        "alertsCount": 6,
+        "alerts": [
+          {
+            "id": "al-1006-1",
+            "title": "Network scanning activity detected",
+            "description": "Sequential TCP connections to 1,024 ports across 40 hosts.",
+            "severity": "Medium",
+            "vendor": "Microsoft Defender for Endpoint",
+            "tactics": ["Discovery"],
+            "techniques": ["T1046"]
+          }
+        ],
+        "entities": [
+          {"kind": "Host", "name": "NESSUS-SCAN-01", "os": "Ubuntu 22.04"},
+          {"kind": "Ip", "address": "10.20.5.14", "direction": "Internal", "location": "Corporate DMZ"},
+          {"kind": "Account", "name": "svc_vulnscan@cybersecurity.corp", "upn": "svc_vulnscan@cybersecurity.corp"}
+        ],
+        "labels": ["ScannerActivity", "ApprovedChange"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "FALSE_POSITIVE",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Encoded PowerShell originates from the documented SCCM jump box under an approved change window, executed by a platform engineering service account."
+      },
+      "incident": {
+        "id": "eval-007",
+        "incidentNumber": 1007,
+        "title": "Encoded PowerShell Execution Across Multiple Servers",
+        "description": "powershell.exe -EncodedCommand executed on 47 servers within 10 minutes. Originating host JMP-SCCM-02 is the documented SCCM/configuration-management jump box. Executing identity svc_sccm is the platform engineering deployment service account. Change ticket CHG-2026-1102 covers a scheduled patch-baseline rollout in this exact window. Command decodes to a Windows Update compliance check.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["Execution"],
+        "techniques": ["T1059.001"],
+        "alertsCount": 47,
+        "alerts": [
+          {
+            "id": "al-1007-1",
+            "title": "Encoded PowerShell command line",
+            "description": "Base64 encoded PowerShell detected across multiple endpoints.",
+            "severity": "High",
+            "vendor": "Microsoft Defender for Endpoint",
+            "tactics": ["Execution"],
+            "techniques": ["T1059.001"]
+          }
+        ],
+        "entities": [
+          {"kind": "Host", "name": "JMP-SCCM-02", "os": "Windows Server 2022"},
+          {"kind": "Account", "name": "svc_sccm@cybersecurity.corp", "upn": "svc_sccm@cybersecurity.corp"},
+          {"kind": "Process", "processName": "powershell.exe", "commandLine": "powershell.exe -EncodedCommand RwBlAHQALQBXAGkAbgBkAG8AdwBzAFUAcABkAGEAdABlAA=="}
+        ],
+        "labels": ["SCCM", "ApprovedChange"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "FALSE_POSITIVE",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Geographic anomaly is fully explained by the corporate VPN egress gateway; device is compliant and the session is continuous."
+      },
+      "incident": {
+        "id": "eval-008",
+        "incidentNumber": 1008,
+        "title": "Impossible Travel Alert - Sign-in from Two Countries",
+        "description": "User signed in from Chennai, India at 09:12 and from Amsterdam, Netherlands at 09:31. The Amsterdam IP 20.86.44.19 is the corporate Azure VPN egress gateway documented in the network inventory; split-tunnel VPN activation explains the apparent relocation. Device ID is unchanged and Intune-compliant across both events, session token was never reissued, and no impossible-velocity travel actually occurred.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["InitialAccess"],
+        "techniques": ["T1078"],
+        "alertsCount": 1,
+        "alerts": [
+          {
+            "id": "al-1008-1",
+            "title": "Impossible travel activity",
+            "description": "Sign-ins from geographically distant locations in a short timeframe.",
+            "severity": "Medium",
+            "vendor": "Microsoft Entra ID Protection",
+            "tactics": ["InitialAccess"],
+            "techniques": ["T1078"]
+          }
+        ],
+        "entities": [
+          {"kind": "Account", "name": "asharma@cybersecurity.corp", "upn": "asharma@cybersecurity.corp"},
+          {"kind": "Ip", "address": "20.86.44.19", "direction": "Inbound", "location": "Amsterdam, Netherlands"},
+          {"kind": "Host", "name": "LAP-SALES-118", "os": "Windows 11 Enterprise"}
+        ],
+        "labels": ["VPN", "EntraIDProtection"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "BENIGN",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Authorized red-team engagement with signed rules of engagement. The credential dumping genuinely occurred, so this is a benign positive (real but expected activity), not a false positive (detection logic was wrong). Originally mislabeled FALSE_POSITIVE in the v1 dataset; corrected after the model's disagreement proved better-grounded in Microsoft's TruePositive/BenignPositive/FalsePositive taxonomy."
+      },
+      "incident": {
+        "id": "eval-009",
+        "incidentNumber": 1009,
+        "title": "Credential Dumping Tooling Detected on Domain Controller",
+        "description": "Mimikatz-signature memory access against lsass.exe detected on DC-CORP-01. Source workstation 10.55.99.20 is within the declared source range for the authorized red-team engagement RT-2026-Q3, which has a signed rules-of-engagement document covering this technique, this target, and this time window. Red-team operator account rt_operator01 is used, and the security team was notified in advance.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["CredentialAccess"],
+        "techniques": ["T1003.001"],
+        "alertsCount": 2,
+        "alerts": [
+          {
+            "id": "al-1009-1",
+            "title": "Credential dumping attempt on LSASS",
+            "description": "Suspicious memory read of lsass.exe consistent with credential theft tooling.",
+            "severity": "High",
+            "vendor": "Microsoft Defender for Endpoint",
+            "tactics": ["CredentialAccess"],
+            "techniques": ["T1003.001"]
+          }
+        ],
+        "entities": [
+          {"kind": "Host", "name": "DC-CORP-01", "os": "Windows Server 2022"},
+          {"kind": "Account", "name": "rt_operator01@cybersecurity.corp", "upn": "rt_operator01@cybersecurity.corp"},
+          {"kind": "Ip", "address": "10.55.99.20", "direction": "Internal", "location": "Red Team Range"}
+        ],
+        "labels": ["RedTeam", "AuthorizedTesting"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "SUSPICIOUS_ESCALATE",
+        "techniques": ["T1110.003"],
+        "severity": "Medium",
+        "rationale": "Password spray from a residential IP followed by one success, but MFA held and no post-auth activity. Genuinely ambiguous - needs human review, not an autonomous verdict."
+      },
+      "incident": {
+        "id": "eval-010",
+        "incidentNumber": 1010,
+        "title": "Password Spray Attempts with Single Successful Authentication",
+        "description": "142 failed authentication attempts across 38 distinct accounts from 203.0.113.44 over 2 hours, followed by one successful primary-credential validation for tgarcia@cybersecurity.corp. MFA challenge was issued and NOT satisfied, so no session was established. Source IP has no threat intelligence reputation data and geolocates to a residential ISP in the user's home city. No subsequent activity observed on the account. Cannot determine from available evidence whether this was an attack that failed at MFA or the user mistyping credentials repeatedly.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["CredentialAccess"],
+        "techniques": ["T1110.003"],
+        "alertsCount": 2,
+        "alerts": [
+          {
+            "id": "al-1010-1",
+            "title": "Password spray activity",
+            "description": "High volume of failed sign-ins across multiple accounts from a single source.",
+            "severity": "Medium",
+            "vendor": "Microsoft Entra ID Protection",
+            "tactics": ["CredentialAccess"],
+            "techniques": ["T1110.003"]
+          }
+        ],
+        "entities": [
+          {"kind": "Account", "name": "tgarcia@cybersecurity.corp", "upn": "tgarcia@cybersecurity.corp"},
+          {"kind": "Ip", "address": "203.0.113.44", "direction": "Inbound", "location": "Residential ISP"}
+        ],
+        "labels": ["PasswordSpray", "MFABlocked"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "SUSPICIOUS_ESCALATE",
+        "techniques": ["T1136.003"],
+        "severity": "Medium",
+        "rationale": "Privileged role assignment outside change control - could be a legitimate emergency or a persistence mechanism. Insufficient evidence either way."
+      },
+      "incident": {
+        "id": "eval-011",
+        "incidentNumber": 1011,
+        "title": "Global Administrator Role Assigned Outside Change Window",
+        "description": "Account bthomas@cybersecurity.corp was assigned the Global Administrator role at 02:47 local time by an existing Global Administrator. No change ticket references this assignment. The assigning admin account shows a normal sign-in pattern with no risk indicators, and the assigned user is a genuine member of the IT department. However, the hour is unusual, the assignment bypassed the PIM just-in-time process the organization normally mandates, and no justification was recorded.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["Persistence", "PrivilegeEscalation"],
+        "techniques": ["T1136.003", "T1098"],
+        "alertsCount": 1,
+        "alerts": [
+          {
+            "id": "al-1011-1",
+            "title": "Privileged role assignment",
+            "description": "Global Administrator role granted outside of PIM workflow.",
+            "severity": "Medium",
+            "vendor": "Microsoft Entra ID",
+            "tactics": ["Persistence"],
+            "techniques": ["T1098"]
+          }
+        ],
+        "entities": [
+          {"kind": "Account", "name": "bthomas@cybersecurity.corp", "upn": "bthomas@cybersecurity.corp"},
+          {"kind": "Account", "name": "admin_klarsen@cybersecurity.corp", "upn": "admin_klarsen@cybersecurity.corp"}
+        ],
+        "labels": ["PrivilegedAccess", "PIMBypass"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "BENIGN",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Account lockouts traced to a stale cached credential on the user's own phone after a password change. Real activity, no adversary."
+      },
+      "incident": {
+        "id": "eval-012",
+        "incidentNumber": 1012,
+        "title": "Repeated Account Lockouts for Single User",
+        "description": "User account locked out 7 times in 90 minutes. All failed authentications originate from device ID matching the user's enrolled iPhone, using the Exchange ActiveSync protocol. The user changed their password earlier the same morning; the mail client on the phone continued presenting the old cached credential until re-authentication. No other source IPs or devices involved and no successful authentication from an unexpected location.",
+        "severity": "Low",
+        "status": "New",
+        "tactics": [],
+        "techniques": [],
+        "alertsCount": 1,
+        "alerts": [
+          {
+            "id": "al-1012-1",
+            "title": "Multiple failed authentication attempts",
+            "description": "Repeated account lockout events for a single identity.",
+            "severity": "Low",
+            "vendor": "Microsoft Entra ID",
+            "tactics": [],
+            "techniques": []
+          }
+        ],
+        "entities": [
+          {"kind": "Account", "name": "lnguyen@cybersecurity.corp", "upn": "lnguyen@cybersecurity.corp"},
+          {"kind": "Host", "name": "iPhone-lnguyen", "os": "iOS 18"}
+        ],
+        "labels": ["AccountLockout", "StaleCredential"]
+      }
+    }
+  ]
+}

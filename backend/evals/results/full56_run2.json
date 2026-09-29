@@ -1,0 +1,1728 @@
+{
+  "summary": {
+    "run_at": "2026-09-28T20:39:32.819316+00:00",
+    "model": "gpt-5-mini",
+    "provider": "azure_openai",
+    "demo_mode": false,
+    "incidents": 56,
+    "llm_backed": true,
+    "accuracy": 0.8214285714285714,
+    "correct": 46,
+    "agent_errors": 0,
+    "missed_threats": 0,
+    "missed_threat_rate": 0.0,
+    "false_alarms": 1,
+    "false_alarm_rate": 0.041666666666666664,
+    "technique_recall_mean": 0.8489583333333334,
+    "technique_precision_mean": 0.7552083333333334,
+    "latency_mean_s": 35.19,
+    "latency_median_s": 34.92,
+    "confidence_when_correct": 86.1,
+    "confidence_when_wrong": 93.5,
+    "tokens": {
+      "prompt": 112072,
+      "completion": 188374,
+      "reasoning": 101504,
+      "llm_calls": 56,
+      "per_incident": 5365
+    },
+    "estimated_cost_usd": null,
+    "confusion_matrix": {
+      "TRUE_POSITIVE": {
+        "TRUE_POSITIVE": 22
+      },
+      "FALSE_POSITIVE": {
+        "FALSE_POSITIVE": 14,
+        "BENIGN": 3,
+        "TRUE_POSITIVE": 1
+      },
+      "SUSPICIOUS_ESCALATE": {
+        "SUSPICIOUS_ESCALATE": 10
+      },
+      "BENIGN": {
+        "FALSE_POSITIVE": 6
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "cl-001",
+      "category": "cloud",
+      "title": "Storage Container Made Public Followed by Bulk Anonymous Download",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1530",
+        "T1567"
+      ],
+      "predicted_techniques": [
+        "T1078",
+        "T1530",
+        "T1567"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 0.6666666666666666,
+      "latency_s": 49.82,
+      "usage": {
+        "prompt_tokens": 1788,
+        "completion_tokens": 4494,
+        "reasoning_tokens": 2496,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Storage container made publicly readable then bulk-downloaded from an external IP within minutes, by an identity with no storage responsibilities."
+    },
+    {
+      "id": "cl-002",
+      "category": "cloud",
+      "title": "Bulk Key Vault Secret Retrieval by Service Principal",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1078.004",
+        "T1552.001"
+      ],
+      "predicted_techniques": [
+        "T1078.004",
+        "T1530"
+      ],
+      "technique_recall": 0.5,
+      "technique_precision": 0.5,
+      "latency_s": 48.55,
+      "usage": {
+        "prompt_tokens": 1776,
+        "completion_tokens": 4212,
+        "reasoning_tokens": 2432,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Bulk secret enumeration from a Key Vault by a service principal authenticating from an unusual ASN, reading secrets far outside its normal scope."
+    },
+    {
+      "id": "cl-003",
+      "category": "cloud",
+      "title": "Unauthorised GPU Virtual Machine Deployment with Mining Pool Traffic",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1496"
+      ],
+      "predicted_techniques": [
+        "T1078",
+        "T1496"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 0.5,
+      "latency_s": 34.83,
+      "usage": {
+        "prompt_tokens": 1751,
+        "completion_tokens": 3438,
+        "reasoning_tokens": 1664,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "GPU VM fleet deployed in an unused region by a compromised identity, connecting to mining pools - resource hijacking."
+    },
+    {
+      "id": "cl-004",
+      "category": "cloud",
+      "title": "Mass Deletion of Production Resources Including Recovery Vaults",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 95,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1078.004",
+        "T1485"
+      ],
+      "predicted_techniques": [
+        "T1078.004",
+        "T1485",
+        "T1562.008"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 0.6666666666666666,
+      "latency_s": 41.1,
+      "usage": {
+        "prompt_tokens": 1756,
+        "completion_tokens": 4023,
+        "reasoning_tokens": 2176,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Mass deletion of production resources including backups and recovery vaults by a recently-compromised identity, outside change control."
+    },
+    {
+      "id": "cl-005",
+      "category": "cloud",
+      "title": "Rapid Creation of 120 Resources Across Multiple Regions",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1578.002"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 35.9,
+      "usage": {
+        "prompt_tokens": 1626,
+        "completion_tokens": 2898,
+        "reasoning_tokens": 1664,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Resource creation burst is a Terraform pipeline run from the CI service principal against a reviewed and merged pull request."
+    },
+    {
+      "id": "cl-006",
+      "category": "cloud",
+      "title": "Bulk Resource Deletion in Non-Production Subscription",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1485"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 29.5,
+      "usage": {
+        "prompt_tokens": 1734,
+        "completion_tokens": 2931,
+        "reasoning_tokens": 1600,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Bulk deletion is the scheduled decommission of the retired test environment, executed under an approved change with the resource list matching the decommission plan."
+    },
+    {
+      "id": "cl-007",
+      "category": "cloud",
+      "title": "Service Identity Reading Multiple Key Vault Secrets Overnight",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 95,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1552.001"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 30.75,
+      "usage": {
+        "prompt_tokens": 1667,
+        "completion_tokens": 3135,
+        "reasoning_tokens": 1792,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Key Vault reads are the backup service's documented nightly job, matching its long-standing schedule, scope and source."
+    },
+    {
+      "id": "cl-008",
+      "category": "cloud",
+      "title": "Diagnostic Logging Disabled on Production Storage Account",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 65,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [
+        "T1562.008"
+      ],
+      "predicted_techniques": [
+        "T1562.008"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 36.2,
+      "usage": {
+        "prompt_tokens": 1653,
+        "completion_tokens": 3121,
+        "reasoning_tokens": 1728,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Diagnostic logging disabled on a production resource without a ticket. Could be cost work or anti-forensics - no other indicators either way."
+    },
+    {
+      "id": "cl-009",
+      "category": "cloud",
+      "title": "Contributor Role Assigned at Subscription Scope",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 70,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [
+        "T1098.003"
+      ],
+      "predicted_techniques": [
+        "T1098.003"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 35.25,
+      "usage": {
+        "prompt_tokens": 1624,
+        "completion_tokens": 3100,
+        "reasoning_tokens": 1664,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Broad role assignment at subscription scope with a plausible but unverified justification. Needs manager confirmation rather than an autonomous call."
+    },
+    {
+      "id": "cl-010",
+      "category": "cloud",
+      "title": "Network Security Group Rules Modified Across Multiple Subnets",
+      "expected": "BENIGN",
+      "predicted": "FALSE_POSITIVE",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 95,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 25.48,
+      "usage": {
+        "prompt_tokens": 1600,
+        "completion_tokens": 2445,
+        "reasoning_tokens": 1216,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Network security group change alert triggered by an automated policy remediation task doing exactly what it was designed to do."
+    },
+    {
+      "id": "eval-001",
+      "category": "core",
+      "title": "Suspicious PowerShell Invocations with Encoded Arguments from Word Process",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1027",
+        "T1059.001",
+        "T1566.001"
+      ],
+      "predicted_techniques": [
+        "T1027",
+        "T1059.001",
+        "T1071.001"
+      ],
+      "technique_recall": 0.6666666666666666,
+      "technique_precision": 0.6666666666666666,
+      "latency_s": 40.39,
+      "usage": {
+        "prompt_tokens": 2427,
+        "completion_tokens": 3438,
+        "reasoning_tokens": 1792,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Office process spawning hidden encoded PowerShell with egress to a high-reputation-risk IP is textbook macro-borne execution."
+    },
+    {
+      "id": "eval-002",
+      "category": "core",
+      "title": "Impossible Travel and Risky Sign-in from Tor Exit Node",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 85,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1078.004",
+        "T1550.01"
+      ],
+      "predicted_techniques": [
+        "T1078.004",
+        "T1090.003"
+      ],
+      "technique_recall": 0.5,
+      "technique_precision": 0.5,
+      "latency_s": 40.02,
+      "usage": {
+        "prompt_tokens": 1848,
+        "completion_tokens": 3680,
+        "reasoning_tokens": 1984,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Successful auth from a Tor exit node 15 minutes after a domestic login, with no VPN record, is account compromise."
+    },
+    {
+      "id": "eval-003",
+      "category": "core",
+      "title": "Mass File Encryption Activity with Shadow Copy Deletion",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1486",
+        "T1490"
+      ],
+      "predicted_techniques": [
+        "T1486",
+        "T1490"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 33.36,
+      "usage": {
+        "prompt_tokens": 2229,
+        "completion_tokens": 4170,
+        "reasoning_tokens": 2496,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Mass file rename with shadow copy deletion is ransomware detonation."
+    },
+    {
+      "id": "eval-004",
+      "category": "core",
+      "title": "Kerberoasting - Anomalous Service Ticket Requests with RC4 Encryption",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 95,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1078",
+        "T1558.003"
+      ],
+      "predicted_techniques": [
+        "T1558.003"
+      ],
+      "technique_recall": 0.5,
+      "technique_precision": 1.0,
+      "latency_s": 30.14,
+      "usage": {
+        "prompt_tokens": 2219,
+        "completion_tokens": 3312,
+        "reasoning_tokens": 1792,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Bulk Kerberos service ticket requests with RC4 downgrade from a workstation is kerberoasting."
+    },
+    {
+      "id": "eval-005",
+      "category": "core",
+      "title": "Bulk SharePoint Download Followed by Personal Cloud Storage Upload",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1530",
+        "T1567.002"
+      ],
+      "predicted_techniques": [
+        "T1530",
+        "T1567.002"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 32.73,
+      "usage": {
+        "prompt_tokens": 2354,
+        "completion_tokens": 2901,
+        "reasoning_tokens": 1472,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Large-volume download from SharePoint followed by upload to personal cloud storage by a departing employee is exfiltration."
+    },
+    {
+      "id": "eval-006",
+      "category": "core",
+      "title": "Port Scanning and Vulnerability Probing Against DMZ Web Application",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "BENIGN",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 95,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1046"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 28.89,
+      "usage": {
+        "prompt_tokens": 2363,
+        "completion_tokens": 3018,
+        "reasoning_tokens": 1728,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Source IP is the documented Nessus scanner in the asset inventory, running an approved scan window with a change ticket."
+    },
+    {
+      "id": "eval-007",
+      "category": "core",
+      "title": "Encoded PowerShell Execution Across Multiple Servers",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1059.001",
+        "T1078"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 42.85,
+      "usage": {
+        "prompt_tokens": 2302,
+        "completion_tokens": 3567,
+        "reasoning_tokens": 1984,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Encoded PowerShell originates from the documented SCCM jump box under an approved change window, executed by a platform engineering service account."
+    },
+    {
+      "id": "eval-008",
+      "category": "core",
+      "title": "Impossible Travel Alert - Sign-in from Two Countries",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 92,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1078"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 31.7,
+      "usage": {
+        "prompt_tokens": 2357,
+        "completion_tokens": 3046,
+        "reasoning_tokens": 1792,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Geographic anomaly is fully explained by the corporate VPN egress gateway; device is compliant and the session is continuous."
+    },
+    {
+      "id": "eval-009",
+      "category": "core",
+      "title": "Credential Dumping Tooling Detected on Domain Controller",
+      "expected": "BENIGN",
+      "predicted": "FALSE_POSITIVE",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 95,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1003.001"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 30.84,
+      "usage": {
+        "prompt_tokens": 2369,
+        "completion_tokens": 2869,
+        "reasoning_tokens": 1344,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Authorized red-team engagement with signed rules of engagement. The credential dumping genuinely occurred, so this is a benign positive (real but expected activity), not a false positive (detection logic was wrong). Originally mislabeled FALSE_POSITIVE in the v1 dataset; corrected after the model's disagreement proved better-grounded in Microsoft's TruePositive/BenignPositive/FalsePositive taxonomy."
+    },
+    {
+      "id": "eval-010",
+      "category": "core",
+      "title": "Password Spray Attempts with Single Successful Authentication",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 65,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1110.003"
+      ],
+      "predicted_techniques": [
+        "T1078",
+        "T1110.003"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 0.5,
+      "latency_s": 36.3,
+      "usage": {
+        "prompt_tokens": 1762,
+        "completion_tokens": 3697,
+        "reasoning_tokens": 2112,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Password spray from a residential IP followed by one success, but MFA held and no post-auth activity. Genuinely ambiguous - needs human review, not an autonomous verdict."
+    },
+    {
+      "id": "eval-011",
+      "category": "core",
+      "title": "Global Administrator Role Assigned Outside Change Window",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 70,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1136.003"
+      ],
+      "predicted_techniques": [
+        "T1098"
+      ],
+      "technique_recall": 0.0,
+      "technique_precision": 0.0,
+      "latency_s": 34.7,
+      "usage": {
+        "prompt_tokens": 1682,
+        "completion_tokens": 3420,
+        "reasoning_tokens": 1664,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Privileged role assignment outside change control - could be a legitimate emergency or a persistence mechanism. Insufficient evidence either way."
+    },
+    {
+      "id": "eval-012",
+      "category": "core",
+      "title": "Repeated Account Lockouts for Single User",
+      "expected": "BENIGN",
+      "predicted": "FALSE_POSITIVE",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 95,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 37.8,
+      "usage": {
+        "prompt_tokens": 2215,
+        "completion_tokens": 3613,
+        "reasoning_tokens": 2304,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Account lockouts traced to a stale cached credential on the user's own phone after a password change. Real activity, no adversary."
+    },
+    {
+      "id": "ep-001",
+      "category": "endpoint",
+      "title": "Process Injection into Browser with Periodic Beaconing",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1055",
+        "T1071.001"
+      ],
+      "predicted_techniques": [
+        "T1055",
+        "T1071.001"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 41.15,
+      "usage": {
+        "prompt_tokens": 2402,
+        "completion_tokens": 3625,
+        "reasoning_tokens": 1728,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Process injection into a browser followed by fixed-interval beaconing with jitter to a newly registered domain is C2 implant behaviour."
+    },
+    {
+      "id": "ep-002",
+      "category": "endpoint",
+      "title": "Scheduled Task Persistence with Masquerading Name",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1053.005",
+        "T1059.001"
+      ],
+      "predicted_techniques": [
+        "T1036.005",
+        "T1053.005",
+        "T1059.001"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 0.6666666666666666,
+      "latency_s": 33.69,
+      "usage": {
+        "prompt_tokens": 2348,
+        "completion_tokens": 3572,
+        "reasoning_tokens": 1472,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Scheduled task created under a misleading Microsoft-like name running an obfuscated script from AppData at every logon is persistence."
+    },
+    {
+      "id": "ep-003",
+      "category": "endpoint",
+      "title": "Vulnerable Signed Driver Loaded Prior to Security Sensor Termination",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 92,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1068",
+        "T1562.001"
+      ],
+      "predicted_techniques": [
+        "T1068",
+        "T1562.001"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 37.36,
+      "usage": {
+        "prompt_tokens": 2101,
+        "completion_tokens": 3828,
+        "reasoning_tokens": 1984,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "A known-vulnerable signed driver loaded immediately before EDR sensor termination is bring-your-own-vulnerable-driver used to disable defences."
+    },
+    {
+      "id": "ep-004",
+      "category": "endpoint",
+      "title": "Living-off-the-Land Download and Execute via certutil",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1105",
+        "T1218.011"
+      ],
+      "predicted_techniques": [
+        "T1059.003",
+        "T1087.002",
+        "T1105",
+        "T1218.011"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 0.5,
+      "latency_s": 40.42,
+      "usage": {
+        "prompt_tokens": 2329,
+        "completion_tokens": 4109,
+        "reasoning_tokens": 1984,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "LOLBin download-and-execute chain from a paste site with the payload written to a temp directory and immediately run."
+    },
+    {
+      "id": "ep-005",
+      "category": "endpoint",
+      "title": "Malware Detected on Multiple Endpoints Simultaneously",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 95,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1204.002"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 35.26,
+      "usage": {
+        "prompt_tokens": 2240,
+        "completion_tokens": 3081,
+        "reasoning_tokens": 1792,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "EICAR test file deployed by the security team as a documented detection-validation exercise."
+    },
+    {
+      "id": "ep-006",
+      "category": "endpoint",
+      "title": "PsExec Remote Execution Across 60 Workstations",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1569.002"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 35.34,
+      "usage": {
+        "prompt_tokens": 2314,
+        "completion_tokens": 3263,
+        "reasoning_tokens": 1664,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "PsExec lateral execution is the documented software deployment tool run by IT operations under an approved change."
+    },
+    {
+      "id": "ep-007",
+      "category": "endpoint",
+      "title": "Unsigned Binary Execution from User Directory",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1204.002"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 25.52,
+      "usage": {
+        "prompt_tokens": 2309,
+        "completion_tokens": 2876,
+        "reasoning_tokens": 1536,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Unsigned binary execution from a developer's build output directory on a machine in the developer workstation group - expected behaviour for this role."
+    },
+    {
+      "id": "ep-008",
+      "category": "endpoint",
+      "title": "Registry Run Key Modification Across Fleet",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 95,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1547.001"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 26.11,
+      "usage": {
+        "prompt_tokens": 2095,
+        "completion_tokens": 2847,
+        "reasoning_tokens": 1536,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Registry run-key additions are the documented endpoint agent rollout from the management server under change control."
+    },
+    {
+      "id": "ep-009",
+      "category": "endpoint",
+      "title": "Remote Access Tool Installed on Workstation",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 65,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [
+        "T1219"
+      ],
+      "predicted_techniques": [
+        "T1219"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 40.83,
+      "usage": {
+        "prompt_tokens": 2365,
+        "completion_tokens": 3411,
+        "reasoning_tokens": 1856,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Remote access tool installed without a ticket. Could be shadow IT or an attacker's remote access - the incident provides no evidence to distinguish."
+    },
+    {
+      "id": "ep-010",
+      "category": "endpoint",
+      "title": "Obfuscated Script File Written to Temp Directory",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 65,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [
+        "T1027"
+      ],
+      "predicted_techniques": [
+        "T1027"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 28.81,
+      "usage": {
+        "prompt_tokens": 2059,
+        "completion_tokens": 3149,
+        "reasoning_tokens": 1856,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Obfuscated script in a temp directory with no execution evidence and no network activity - needs analysis before a verdict can be reached."
+    },
+    {
+      "id": "ep-011",
+      "category": "endpoint",
+      "title": "Unusual Child Process Spawned by Line-of-Business Application",
+      "expected": "BENIGN",
+      "predicted": "FALSE_POSITIVE",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 95,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 35.02,
+      "usage": {
+        "prompt_tokens": 2069,
+        "completion_tokens": 3898,
+        "reasoning_tokens": 2560,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Crash-handler process spawning behaviour from a known-buggy application version. Real detection, real activity, no adversary and no security relevance."
+    },
+    {
+      "id": "id-001",
+      "category": "identity",
+      "title": "Illicit OAuth Consent Grant to Unverified Application",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1528",
+        "T1566.002"
+      ],
+      "predicted_techniques": [
+        "T1528"
+      ],
+      "technique_recall": 0.5,
+      "technique_precision": 1.0,
+      "latency_s": 40.65,
+      "usage": {
+        "prompt_tokens": 1717,
+        "completion_tokens": 3776,
+        "reasoning_tokens": 2176,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Consent granted to an unverified third-party app requesting Mail.ReadWrite and offline_access, delivered by phishing link. Classic OAuth consent grant attack."
+    },
+    {
+      "id": "id-002",
+      "category": "identity",
+      "title": "MFA Fatigue - Repeated Push Notifications Followed by Approval",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 85,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1078",
+        "T1621"
+      ],
+      "predicted_techniques": [
+        "T1078",
+        "T1114.003",
+        "T1621"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 0.6666666666666666,
+      "latency_s": 39.19,
+      "usage": {
+        "prompt_tokens": 1762,
+        "completion_tokens": 3812,
+        "reasoning_tokens": 1920,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "38 MFA push notifications in 12 minutes followed by an approval and immediate mailbox rule creation is MFA fatigue leading to successful compromise."
+    },
+    {
+      "id": "id-003",
+      "category": "identity",
+      "title": "Session Token Replay from Divergent Device Fingerprint",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1550.001",
+        "T1557"
+      ],
+      "predicted_techniques": [
+        "T1550.001",
+        "T1557"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 34.74,
+      "usage": {
+        "prompt_tokens": 1749,
+        "completion_tokens": 3633,
+        "reasoning_tokens": 1792,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Session token replayed from a different ASN and device fingerprint minutes after issuance, with no corresponding authentication - adversary-in-the-middle token theft."
+    },
+    {
+      "id": "id-004",
+      "category": "identity",
+      "title": "Credential Added to Privileged Service Principal",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1078.004",
+        "T1098.001"
+      ],
+      "predicted_techniques": [
+        "T1078",
+        "T1098.001"
+      ],
+      "technique_recall": 0.5,
+      "technique_precision": 0.5,
+      "latency_s": 40.28,
+      "usage": {
+        "prompt_tokens": 1754,
+        "completion_tokens": 4211,
+        "reasoning_tokens": 2176,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "A new client secret was added to a privileged service principal by a non-admin account outside change control, then immediately used from an external IP."
+    },
+    {
+      "id": "id-005",
+      "category": "identity",
+      "title": "Successful Legacy Protocol Authentication Bypassing Conditional Access",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 92,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1078",
+        "T1110.004"
+      ],
+      "predicted_techniques": [
+        "T1078",
+        "T1110.004"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 33.4,
+      "usage": {
+        "prompt_tokens": 1744,
+        "completion_tokens": 3321,
+        "reasoning_tokens": 1664,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Credential stuffing via legacy IMAP that bypasses Conditional Access MFA, with successful auth and mailbox access."
+    },
+    {
+      "id": "id-006",
+      "category": "identity",
+      "title": "Mass Authentication Failures Across Hundreds of Accounts",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 95,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 35.73,
+      "usage": {
+        "prompt_tokens": 1629,
+        "completion_tokens": 3165,
+        "reasoning_tokens": 1728,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Authentication failure spike is caused by a documented Conditional Access policy rollout, not an attack. All failures are policy-blocked, not credential failures."
+    },
+    {
+      "id": "id-007",
+      "category": "identity",
+      "title": "Bulk User Account Creation Outside Normal Volume",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 95,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1136.003"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 26.47,
+      "usage": {
+        "prompt_tokens": 1735,
+        "completion_tokens": 2782,
+        "reasoning_tokens": 1344,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Bulk account creation is the documented quarterly graduate intake, executed by the HR provisioning service account from the corporate IP range."
+    },
+    {
+      "id": "id-008",
+      "category": "identity",
+      "title": "Global Administrator Privilege Elevation at Unusual Hour",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1078.004"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 30.96,
+      "usage": {
+        "prompt_tokens": 1635,
+        "completion_tokens": 2984,
+        "reasoning_tokens": 1792,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Privileged elevation followed the mandated PIM workflow with approval and a linked incident ticket - the control worked as designed."
+    },
+    {
+      "id": "id-009",
+      "category": "identity",
+      "title": "Sign-in from Unfamiliar Country - Singapore",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "BENIGN",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1078"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 36.23,
+      "usage": {
+        "prompt_tokens": 1733,
+        "completion_tokens": 3171,
+        "reasoning_tokens": 1920,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Foreign sign-in matches an approved travel request and the device is unchanged and compliant throughout."
+    },
+    {
+      "id": "id-010",
+      "category": "identity",
+      "title": "Dormant Account Reactivated After 11 Months",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 70,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1078"
+      ],
+      "predicted_techniques": [
+        "T1078"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 30.94,
+      "usage": {
+        "prompt_tokens": 1754,
+        "completion_tokens": 2767,
+        "reasoning_tokens": 1344,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Dormant account reactivated and used successfully. Could be a returning contractor or an attacker using a stale credential - HR status is unavailable in the incident."
+    },
+    {
+      "id": "id-011",
+      "category": "identity",
+      "title": "New MFA Method Registered from Unrecognised IP",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 75,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [
+        "T1556.006"
+      ],
+      "predicted_techniques": [
+        "T1078",
+        "T1556.006"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 0.5,
+      "latency_s": 32.18,
+      "usage": {
+        "prompt_tokens": 1752,
+        "completion_tokens": 3302,
+        "reasoning_tokens": 1728,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "MFA method registered from an unfamiliar IP, but the user is travelling and no malicious follow-on activity is present. Needs user verification, not an autonomous verdict."
+    },
+    {
+      "id": "id-012",
+      "category": "identity",
+      "title": "Repeated Self-Service Password Resets by Single User",
+      "expected": "BENIGN",
+      "predicted": "FALSE_POSITIVE",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1078"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 33.85,
+      "usage": {
+        "prompt_tokens": 1712,
+        "completion_tokens": 3162,
+        "reasoning_tokens": 1920,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Self-service password reset loop by a user who forgot their new password. Real activity, correctly detected, no adversary."
+    },
+    {
+      "id": "nw-001",
+      "category": "network_data",
+      "title": "DNS Tunnelling - High Volume Encoded TXT Queries",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 95,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1048",
+        "T1071.004"
+      ],
+      "predicted_techniques": [
+        "T1048",
+        "T1071.004"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 38.84,
+      "usage": {
+        "prompt_tokens": 2357,
+        "completion_tokens": 3356,
+        "reasoning_tokens": 1728,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "High-volume TXT queries with base32-encoded subdomains to a single authoritative server is DNS tunnelling used for exfiltration."
+    },
+    {
+      "id": "nw-002",
+      "category": "network_data",
+      "title": "Mailbox Rule Forwarding Finance Keywords to External Address",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1114.003",
+        "T1564.008"
+      ],
+      "predicted_techniques": [
+        "T1078",
+        "T1114.003",
+        "T1564.008"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 0.6666666666666666,
+      "latency_s": 49.56,
+      "usage": {
+        "prompt_tokens": 1786,
+        "completion_tokens": 4646,
+        "reasoning_tokens": 2560,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Hidden inbox rule auto-forwarding finance keywords externally and deleting the originals, created after a risky sign-in, is business email compromise."
+    },
+    {
+      "id": "nw-003",
+      "category": "network_data",
+      "title": "Sequential SMB Admin Share Access Across 40 Hosts",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1021.002",
+        "T1570"
+      ],
+      "predicted_techniques": [
+        "T1021.002",
+        "T1078",
+        "T1105"
+      ],
+      "technique_recall": 0.5,
+      "technique_precision": 0.3333333333333333,
+      "latency_s": 47.07,
+      "usage": {
+        "prompt_tokens": 2264,
+        "completion_tokens": 4586,
+        "reasoning_tokens": 2496,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Sequential admin-share access across dozens of hosts with an identical executable copied to each is hands-on-keyboard lateral movement."
+    },
+    {
+      "id": "nw-004",
+      "category": "network_data",
+      "title": "Sustained Tor Network Traffic from Production Application Server",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 95,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1090.003",
+        "T1573"
+      ],
+      "predicted_techniques": [
+        "T1041",
+        "T1090.003",
+        "T1505.003"
+      ],
+      "technique_recall": 0.5,
+      "technique_precision": 0.3333333333333333,
+      "latency_s": 37.52,
+      "usage": {
+        "prompt_tokens": 2337,
+        "completion_tokens": 3680,
+        "reasoning_tokens": 1856,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Encrypted traffic to Tor guard nodes from a server that has no business reason for anonymised egress, sustained over hours."
+    },
+    {
+      "id": "nw-005",
+      "category": "network_data",
+      "title": "Regular Interval Beaconing Pattern from 200 Endpoints",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1071.001"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 37.42,
+      "usage": {
+        "prompt_tokens": 2351,
+        "completion_tokens": 3436,
+        "reasoning_tokens": 1856,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Fixed-interval outbound traffic is the monitoring agent's documented telemetry heartbeat to the vendor SaaS endpoint."
+    },
+    {
+      "id": "nw-006",
+      "category": "network_data",
+      "title": "Multi-Terabyte Outbound Data Transfer Overnight",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 95,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1048"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 34.16,
+      "usage": {
+        "prompt_tokens": 2327,
+        "completion_tokens": 3303,
+        "reasoning_tokens": 1984,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Large overnight outbound transfer is the scheduled offsite backup replication to the contracted DR provider over a dedicated link."
+    },
+    {
+      "id": "nw-007",
+      "category": "network_data",
+      "title": "Mass File Download from SharePoint by Single User",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "BENIGN",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 90,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1530"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 25.02,
+      "usage": {
+        "prompt_tokens": 2254,
+        "completion_tokens": 2413,
+        "reasoning_tokens": 1216,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Mass file downloads are the sanctioned OneDrive sync client performing a first-time full sync after a device rebuild."
+    },
+    {
+      "id": "nw-008",
+      "category": "network_data",
+      "title": "Credential Phishing Campaign Targeting 300 Users",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": true,
+      "confidence": 95,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1566.002"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 26.85,
+      "usage": {
+        "prompt_tokens": 1704,
+        "completion_tokens": 2474,
+        "reasoning_tokens": 1216,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Inbound phishing was blocked by the mail gateway before delivery; no user interaction was possible."
+    },
+    {
+      "id": "nw-009",
+      "category": "network_data",
+      "title": "Outbound Connections to Recently Registered Domain",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 65,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [
+        "T1071.001"
+      ],
+      "predicted_techniques": [
+        "T1071.001"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 33.68,
+      "usage": {
+        "prompt_tokens": 2339,
+        "completion_tokens": 2743,
+        "reasoning_tokens": 1280,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Traffic to a newly registered domain with no threat intel and a plausible business explanation that cannot be confirmed from the incident."
+    },
+    {
+      "id": "nw-010",
+      "category": "network_data",
+      "title": "Upload to Personal Cloud Storage Account",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 65,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [
+        "T1567.002"
+      ],
+      "predicted_techniques": [
+        "T1567.002"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 29.24,
+      "usage": {
+        "prompt_tokens": 2248,
+        "completion_tokens": 2624,
+        "reasoning_tokens": 1280,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Personal cloud storage upload by a user with no policy exemption, but modest volume and no other risk indicators - warrants a conversation, not containment."
+    },
+    {
+      "id": "nw-011",
+      "category": "network_data",
+      "title": "Inbound Port Probing Against Branch Office Router",
+      "expected": "BENIGN",
+      "predicted": "FALSE_POSITIVE",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 95,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1046"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 30.29,
+      "usage": {
+        "prompt_tokens": 1696,
+        "completion_tokens": 2840,
+        "reasoning_tokens": 1664,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Port scan originates from the ISP-side CPE performing standard link diagnostics against the branch router; real traffic, no threat."
+    }
+  ]
+}

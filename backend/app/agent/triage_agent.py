@@ -5,6 +5,7 @@ from typing import Dict, Any, List, Optional, Callable
 from app.config import settings
 from app.agent.prompts import SOC_TRIAGE_SYSTEM_PROMPT, SOC_CHAT_SYSTEM_PROMPT
 from app.agent.tools import execute_tool_call
+from app.agent.investigator import investigate
 from app.services.sentinel_client import sentinel_client
 
 logger = logging.getLogger(__name__)
@@ -35,26 +36,26 @@ class SentinelTriageAgent:
         """
         Dynamically selects the optimal LLM model tier based on incident characteristics
         and the configured routing policy (Hybrid, Always Mini, or Always Astra).
-        - Low / Informational severity alerts route to gpt-4o-mini (Fast Triage, ~80% volume)
-        - High / Critical severity alerts, multi-alert campaigns, or multi-stage attacks route to gpt-6-astra (Deep Reasoning, ~20% volume)
+        - Low / Informational severity alerts route to the configured fast model (~80% volume)
+        - High / Critical severity alerts, multi-alert campaigns, or multi-stage attacks route to the configured reasoning model (~20% volume)
         """
         import re
         mode = getattr(settings, "LLM_ROUTING_MODE", "hybrid")
-        fast_model = getattr(settings, "FAST_MODEL_NAME", "gpt-4o-mini")
-        reasoning_model = getattr(settings, "REASONING_MODEL_NAME", "gpt-6-astra")
+        fast_model = settings.FAST_MODEL_NAME
+        reasoning_model = settings.REASONING_MODEL_NAME
 
         if mode == "always_mini":
             return {
                 "model_name": fast_model,
                 "reasoning_tier": "fast",
-                "reason": "Routing mode set to Always Fast (gpt-4o-mini)"
+                "reason": f"Routing mode set to Always Fast ({fast_model})"
             }
 
         if mode == "always_astra":
             return {
                 "model_name": reasoning_model,
                 "reasoning_tier": "deep_reasoning",
-                "reason": "Routing mode set to Always Reasoning (gpt-6-astra)"
+                "reason": f"Routing mode set to Always Reasoning ({reasoning_model})"
             }
 
         # Hybrid Mode: Intelligent segregation
@@ -67,15 +68,15 @@ class SentinelTriageAgent:
         alerts = incident.get("alerts", []) or incident.get("relatedAlerts", []) or []
         alerts_count = incident.get("alertsCount") or incident.get("alerts_count") or len(alerts) or 1
 
-        # Condition 1: Low and Informational severity alerts ALWAYS route to Fast Triage (gpt-4o-mini)
+        # Condition 1: Low and Informational severity alerts ALWAYS route to the fast model
         if severity in ["low", "informational"]:
             return {
                 "model_name": fast_model,
                 "reasoning_tier": "fast",
-                "reason": f"Low Severity incident ({severity.capitalize()}) routed to Fast Triage (gpt-4o-mini)"
+                "reason": f"Low Severity incident ({severity.capitalize()}) routed to Fast Triage ({fast_model})"
             }
 
-        # Condition 2: High / Critical Severity alerts ALWAYS route to Deep Forensic Reasoning (gpt-6-astra)
+        # Condition 2: High / Critical Severity alerts ALWAYS route to the reasoning model
         if severity in ["high", "critical"]:
             return {
                 "model_name": reasoning_model,
@@ -135,7 +136,7 @@ class SentinelTriageAgent:
         return {
             "model_name": fast_model,
             "reasoning_tier": "fast",
-            "reason": "Standard routine alert categorized for low-latency Fast Triage (gpt-4o-mini)"
+            "reason": f"Standard routine alert categorized for low-latency Fast Triage ({fast_model})"
         }
 
     async def triage_incident(
@@ -181,7 +182,7 @@ class SentinelTriageAgent:
 
         await notify(
             "MODEL_SELECTED",
-            f"Model Tier Selected: {selected_model} ({reasoning_tier.replace('_', ' ').title()}) — {routing_reason}",
+            f"Model Tier Selected: {selected_model} ({reasoning_tier.replace('_', ' ').title()}) â€” {routing_reason}",
             {
                 "model_name": selected_model,
                 "reasoning_tier": reasoning_tier,
@@ -196,6 +197,14 @@ class SentinelTriageAgent:
         extracted_accounts = [e.get("upn") or e.get("name") for e in entities if e.get("kind") == "Account"]
         extracted_hosts = [e.get("name") for e in entities if e.get("kind") == "Host"]
         extracted_processes = [e.get("commandLine") or e.get("processName") for e in entities if e.get("kind") == "Process"]
+        # File hashes were never extracted, so the VirusTotal integration in tools.py
+        # was unreachable from the triage path regardless of whether a key was set.
+        extracted_hashes = [
+            e.get("sha256") or e.get("sha1") or e.get("md5") or e.get("hashValue") or e.get("value")
+            for e in entities
+            if e.get("kind") in ("FileHash", "File")
+            and (e.get("sha256") or e.get("sha1") or e.get("md5") or e.get("hashValue") or e.get("value"))
+        ]
 
         await notify(
             "ENTITIES_EXTRACTED",
@@ -222,38 +231,154 @@ class SentinelTriageAgent:
             )
             await asyncio.sleep(0.4)
 
+        hash_results = {}
+        for file_hash in extracted_hashes[:5]:
+            await notify("THREAT_INTEL_CHECK", f"Checking file hash against VirusTotal: {file_hash[:16]}...")
+            res = await execute_tool_call("check_file_hash", json.dumps({"file_hash": file_hash}))
+            hash_results[file_hash] = res
+            ti_results[file_hash] = res
+            await notify(
+                "THREAT_INTEL_RESULT",
+                f"Hash {file_hash[:16]}...: Verdict = {res.get('verdict')}, "
+                f"Detections = {res.get('malicious', 0)}/{res.get('total', 0)}",
+                res
+            )
+            await asyncio.sleep(0.4)
+
         # Step 3: Log Analytics KQL Execution for Behavioral Baseline
         executed_kql_queries = []
         kql_findings = []
 
-        if extracted_accounts or extracted_ips:
-            kql_query = "SigninLogs | where TimeGenerated >= ago(24h) | summarize count(), make_set(IPAddress), make_set(Location) by UserPrincipalName"
-            await notify("KQL_EXECUTION", f"Hunting in Log Analytics for SigninLogs baseline: {kql_query}", {"query": kql_query})
-            res = await execute_tool_call("run_kql_query", json.dumps({"query": kql_query, "timespan_hours": 24}))
-            executed_kql_queries.append(kql_query)
-            kql_findings.append({"type": "SigninLogs", "results": res})
-            await notify("KQL_RESULT", f"Log Analytics returned {res.get('row_count', 0)} rows from SigninLogs", res)
-            await asyncio.sleep(0.6)
+        # Hunts are selected from the entities actually present on the incident and
+        # bound to the entity values, rather than running two fixed queries whose
+        # tables may hold no data in this workspace. Each result records whether the
+        # table was populated, so an empty table is reported as an evidence gap
+        # instead of being read as an absence of malicious activity.
+        hunts = []
+
+        if extracted_accounts:
+            acct = extracted_accounts[0]
+            acct_short = str(acct).split("@")[0]
+            hunts.append((
+                "AzureActivity",
+                f'AzureActivity | where TimeGenerated >= ago(24h) '
+                f'| where Caller has "{acct_short}" '
+                f'| summarize Operations=count(), Ops=make_set(OperationNameValue, 10), '
+                f'SourceIPs=make_set(CallerIpAddress, 5) by Caller',
+                24,
+                f"control-plane activity for account {acct}",
+            ))
+            hunts.append((
+                "SigninLogs",
+                f'SigninLogs | where TimeGenerated >= ago(24h) '
+                f'| where UserPrincipalName =~ "{acct}" '
+                f'| summarize Signins=count(), IPs=make_set(IPAddress, 10), '
+                f'Locations=make_set(Location, 10), Failures=countif(ResultType != 0) by UserPrincipalName',
+                24,
+                f"sign-in baseline for {acct}",
+            ))
+
+        for ip in extracted_ips[:2]:
+            hunts.append((
+                "AzureActivity",
+                f'AzureActivity | where TimeGenerated >= ago(24h) '
+                f'| where CallerIpAddress == "{ip}" '
+                f'| summarize Operations=count(), Callers=make_set(Caller, 5) by CallerIpAddress',
+                24,
+                f"control-plane operations originating from {ip}",
+            ))
 
         if extracted_hosts or extracted_processes:
-            kql_query = "DeviceProcessEvents | where InitiatingProcessFileName =~ 'WINWORD.EXE' or FileName =~ 'powershell.exe' | take 5"
-            await notify("KQL_EXECUTION", f"Hunting for suspicious parent-child process lineage: {kql_query}", {"query": kql_query})
-            res = await execute_tool_call("run_kql_query", json.dumps({"query": kql_query, "timespan_hours": 12}))
+            host = (extracted_hosts or ["unknown"])[0]
+            hunts.append((
+                "DeviceProcessEvents",
+                f'DeviceProcessEvents | where TimeGenerated >= ago(12h) '
+                f'| where DeviceName has "{host}" '
+                f'| project TimeGenerated, DeviceName, AccountName, FileName, '
+                f'InitiatingProcessFileName, ProcessCommandLine | take 20',
+                12,
+                f"process lineage on host {host}",
+            ))
+
+        for table, kql_query, hours, purpose in hunts:
+            await notify("KQL_EXECUTION", f"Hunting {purpose}: {kql_query}", {"query": kql_query, "table": table})
+            res = await execute_tool_call("run_kql_query", json.dumps({"query": kql_query, "timespan_hours": hours}))
             executed_kql_queries.append(kql_query)
-            kql_findings.append({"type": "DeviceProcessEvents", "results": res})
-            await notify("KQL_RESULT", f"Log Analytics returned {res.get('row_count', 0)} process events", res)
-            await asyncio.sleep(0.6)
+            row_count = res.get("row_count", 0)
+            kql_findings.append({
+                "type": table,
+                "purpose": purpose,
+                "results": res,
+                # Explicit so the reasoning step cannot mistake "no telemetry" for
+                # "no malicious activity".
+                "data_available": bool(row_count),
+            })
+            detail = f"{row_count} rows" if row_count else "no rows (table empty or no matching telemetry)"
+            await notify("KQL_RESULT", f"{table}: {detail}", res)
+            await asyncio.sleep(0.4)
 
         # Step 4: True/False Positive Reasoning & Verdict Synthesis
-        await notify("REASONING", "Synthesizing evidence with AI reasoning engine, calculating confidence score, and mapping to MITRE ATT&CK tactics...")
+        await notify("REASONING", "Synthesizing evidence with AI reasoning engine, assessing evidence completeness, and mapping to MITRE ATT&CK tactics...")
         await asyncio.sleep(0.8)
 
         # Check if live OpenAI model is configured and active
-        if self.openai_client and not settings.DEMO_MODE:
+        # NOTE: LLM reasoning is independent of DEMO_MODE, so real AI triage can run
+        # against simulated Sentinel incidents without a live Azure Sentinel workspace.
+        if self.openai_client:
             try:
-                model_to_use = selected_model
-                if settings.LLM_PROVIDER == "azure_openai" and settings.AZURE_OPENAI_DEPLOYMENT_NAME and settings.AZURE_OPENAI_DEPLOYMENT_NAME not in ["gpt-4o-mini", "gpt-4o", "gpt-6-astra"]:
-                    model_to_use = settings.AZURE_OPENAI_DEPLOYMENT_NAME
+                # Use whichever model the router selected. AZURE_OPENAI_DEPLOYMENT_NAME is
+                # only a fallback for when the tier names are not configured.
+                # This previously overrode the routed model whenever the deployment name
+                # was not in a hardcoded list of three model names, which defeated routing
+                # on any deployment named something else.
+                model_to_use = selected_model or settings.AZURE_OPENAI_DEPLOYMENT_NAME
+
+                # Adaptive investigation: let the model write its own queries and follow
+                # leads, rather than summarising the fixed hunts above. Falls through to
+                # the single-shot path below if it fails to produce a report, so a loop
+                # failure degrades instead of breaking the triage.
+                if settings.ENABLE_ADAPTIVE_INVESTIGATION:
+                    await notify("REASONING", "Adaptive investigation: the agent is now choosing its own queries and following leads...")
+                    adaptive = await investigate(
+                        client=self.openai_client,
+                        model=model_to_use,
+                        incident=incident,
+                        prior_enrichment={"threat_intel": ti_results, "initial_hunts": kql_findings},
+                        notify=notify,
+                    )
+                    if adaptive:
+                        adaptive.pop("confidence_score", None)
+                        adaptive.setdefault("evidence_gaps", [])
+                        adaptive["model_used"] = selected_model
+                        adaptive["reasoning_tier"] = reasoning_tier
+                        adaptive["routing_reason"] = routing_reason
+                        adaptive["investigation_mode"] = "adaptive"
+                        adaptive["kql_queries_used"] = (
+                            executed_kql_queries
+                            + [s["query"] for s in adaptive.get("investigation_trail", []) if s.get("query")]
+                        )
+                        if adaptive["evidence_gaps"] and isinstance(adaptive.get("evidence_completeness"), (int, float)):
+                            adaptive["evidence_completeness"] = min(adaptive["evidence_completeness"], 85)
+
+                        await notify(
+                            "VERDICT_GENERATED",
+                            f"Adaptive investigation complete: {adaptive.get('verdict')} after "
+                            f"{adaptive.get('investigation_steps')} steps and "
+                            f"{adaptive.get('queries_executed')} self-directed queries",
+                            adaptive,
+                        )
+                        if settings.AUTO_POST_COMMENTS_TO_SENTINEL:
+                            await sentinel_client.add_comment(
+                                incident_id,
+                                f"### 🤖 AI Triage Investigation Report\n"
+                                f"**Model:** `{selected_model}` · adaptive investigation "
+                                f"({adaptive.get('queries_executed')} self-directed queries)\n"
+                                f"**Verdict:** {adaptive.get('verdict')} "
+                                f"(Evidence completeness: {adaptive.get('evidence_completeness')}%)\n"
+                                f"**Summary:** {adaptive.get('executive_summary')}",
+                            )
+                        return adaptive
+                    await notify("REASONING", "Adaptive investigation did not converge; falling back to single-pass reasoning.")
 
                 prompt_messages = [
                     {"role": "system", "content": SOC_TRIAGE_SYSTEM_PROMPT},
@@ -273,7 +398,7 @@ class SentinelTriageAgent:
                         model=model_to_use,
                         messages=prompt_messages,
                         response_format={"type": "json_object"},
-                        max_completion_tokens=2500
+                        max_completion_tokens=16000
                     )
                 except Exception as param_err:
                     if "max_completion_tokens" in str(param_err).lower() or "unsupported" in str(param_err).lower():
@@ -281,13 +406,24 @@ class SentinelTriageAgent:
                             model=model_to_use,
                             messages=prompt_messages,
                             response_format={"type": "json_object"},
-                            max_tokens=2500,
+                            max_tokens=16000,
                             temperature=0.1
                         )
                     else:
                         raise param_err
 
                 verdict_json = json.loads(response.choices[0].message.content)
+
+                # Models frequently emit the legacy `confidence_score` key from prior training
+                # even though it is absent from our schema. Fold it into the current field and
+                # drop it, so downstream consumers only ever see one score.
+                legacy_score = verdict_json.pop("confidence_score", None)
+                if verdict_json.get("evidence_completeness") is None and legacy_score is not None:
+                    verdict_json["evidence_completeness"] = legacy_score
+                verdict_json.setdefault("evidence_gaps", [])
+                if verdict_json["evidence_gaps"] and isinstance(verdict_json.get("evidence_completeness"), (int, float)):
+                    verdict_json["evidence_completeness"] = min(verdict_json["evidence_completeness"], 85)
+
                 verdict_json["model_used"] = selected_model
                 verdict_json["reasoning_tier"] = reasoning_tier
                 verdict_json["routing_reason"] = routing_reason
@@ -296,7 +432,7 @@ class SentinelTriageAgent:
                 
                 # Auto-post comment to Sentinel if enabled
                 if settings.AUTO_POST_COMMENTS_TO_SENTINEL:
-                    comment_summary = f"### 🤖 AI Triage Investigation Report\n**Model Tier:** `{selected_model}` ({reasoning_tier.title()})\n**Verdict:** {verdict_json.get('verdict')} (Confidence: {verdict_json.get('confidence_score')}%)\n**Summary:** {verdict_json.get('executive_summary')}\n**Actions:** {', '.join(verdict_json.get('recommended_actions', []))}"
+                    comment_summary = f"### ðŸ¤– AI Triage Investigation Report\n**Model Tier:** `{selected_model}` ({reasoning_tier.title()})\n**Verdict:** {verdict_json.get('verdict')} (Evidence completeness: {verdict_json.get('evidence_completeness')}%)\n**Summary:** {verdict_json.get('executive_summary')}\n**Actions:** {', '.join(verdict_json.get('recommended_actions', []))}"
                     await sentinel_client.add_comment(incident_id, comment_summary)
                     await notify("SENTINEL_UPDATED", "Triage report automatically posted as comment to Microsoft Sentinel incident.")
                 
@@ -306,7 +442,7 @@ class SentinelTriageAgent:
 
         # Built-in High-Accuracy SOC Reasoning Engineine
         verdict = "SUSPICIOUS_ESCALATE"
-        confidence = 85
+        evidence_completeness = 85
         severity = incident.get("severity", "Medium")
         evidence = []
         recommendations = []
@@ -317,7 +453,7 @@ class SentinelTriageAgent:
         # Check for False Positive patterns (e.g. vulnerability scanner)
         if any("scanner" in label.lower() or "vulnerability" in label.lower() for label in incident.get("labels", [])) or "Scanner" in title:
             verdict = "FALSE_POSITIVE"
-            confidence = 94
+            evidence_completeness = 94
             severity = "Low"
             evidence.append("Activity confirmed as originating from authorized internal vulnerability scanner subnet (Qualys Agent).")
             evidence.append("No successful remote code execution or state alteration observed.")
@@ -329,7 +465,7 @@ class SentinelTriageAgent:
         # Check for True Positive (e.g. Encoded PowerShell, Tor sign-in)
         elif any(res.get("abuse_confidence_score", 0) > 70 for res in ti_results.values()) or "PowerShell" in title or "Tor" in title:
             verdict = "TRUE_POSITIVE"
-            confidence = 96
+            evidence_completeness = 96
             severity = "High"
             for ip, res in ti_results.items():
                 if res.get("abuse_confidence_score", 0) > 50:
@@ -348,7 +484,7 @@ class SentinelTriageAgent:
 
         else:
             verdict = "SUSPICIOUS_ESCALATE"
-            confidence = 78
+            evidence_completeness = 78
             evidence.append("Anomalous authentication rate detected surpassing historical baseline.")
             recommendations.append("Contact user to verify recent sign-in attempts.")
             recommendations.append("Monitor account for further credential spray or password spray activity.")
@@ -509,10 +645,30 @@ class SentinelTriageAgent:
             "corrective_and_preventive_actions": capa
         }
 
+        # Record what this engine could NOT corroborate, so evidence_completeness is
+        # grounded in actual coverage rather than asserted. Mirrors the LLM path's contract.
+        evidence_gaps: List[str] = []
+        for finding in kql_findings:
+            if not (finding.get("results") or {}).get("row_count", 0):
+                evidence_gaps.append(
+                    f"KQL hunt against {finding.get('type')} returned no rows - the activity could not be "
+                    f"corroborated from Log Analytics telemetry."
+                )
+        for ip_addr, res in ti_results.items():
+            if not res.get("total_reports"):
+                evidence_gaps.append(f"No threat intelligence reputation data available for {ip_addr}.")
+        if not extracted_accounts:
+            evidence_gaps.append("No account entity present on the incident - user context could not be assessed.")
+        if not extracted_hosts:
+            evidence_gaps.append("No host entity present on the incident - endpoint context could not be assessed.")
+        if evidence_gaps:
+            evidence_completeness = min(evidence_completeness, 85)
+
         final_report = {
             "incident_id": incident_id,
             "verdict": verdict,
-            "confidence_score": confidence,
+            "evidence_completeness": evidence_completeness,
+            "evidence_gaps": evidence_gaps,
             "severity_assessment": severity,
             "model_used": selected_model,
             "reasoning_tier": reasoning_tier,
@@ -531,11 +687,11 @@ class SentinelTriageAgent:
             "tags_to_apply": tags
         }
 
-        await notify("VERDICT_GENERATED", f"AI Triage completed: {verdict} ({confidence}% confidence) via {selected_model}", final_report)
+        await notify("VERDICT_GENERATED", f"AI Triage completed: {verdict} ({evidence_completeness}% evidence completeness) via {selected_model}", final_report)
 
         # Auto-post to Sentinel
         if settings.AUTO_POST_COMMENTS_TO_SENTINEL:
-            comment_md = f"### 🤖 AI Sentinel Triage Report\n**Model Tier:** `{selected_model}` ({reasoning_tier.title()})\n**Verdict:** `{verdict}` | **Confidence:** `{confidence}%`\n\n**Executive Summary:**\n{summary}\n\n**Key Findings:**\n" + "\n".join([f"- {f}" for f in evidence]) + "\n\n**Recommended Actions:**\n" + "\n".join([f"- {a}" for a in recommendations])
+            comment_md = f"### ðŸ¤– AI Sentinel Triage Report\n**Model Tier:** `{selected_model}` ({reasoning_tier.title()})\n**Verdict:** `{verdict}` | **Evidence Completeness:** `{evidence_completeness}%`\n\n**Executive Summary:**\n{summary}\n\n**Key Findings:**\n" + "\n".join([f"- {f}" for f in evidence]) + "\n\n**Recommended Actions:**\n" + "\n".join([f"- {a}" for a in recommendations])
             await sentinel_client.add_comment(incident_id, comment_md)
             await notify("SENTINEL_UPDATED", "Triage summary posted as comment into Microsoft Sentinel incident.")
 
@@ -554,10 +710,10 @@ class SentinelTriageAgent:
                 chat_model = routing_decision["model_name"]
 
                 if any(kw in user_message.lower() for kw in ["forensic", "rca", "deep", "analyze", "kill chain", "root cause", "reverse"]):
-                    chat_model = getattr(settings, "REASONING_MODEL_NAME", "gpt-6-astra")
+                    chat_model = settings.REASONING_MODEL_NAME
 
-                if settings.LLM_PROVIDER == "azure_openai" and settings.AZURE_OPENAI_DEPLOYMENT_NAME and settings.AZURE_OPENAI_DEPLOYMENT_NAME not in ["gpt-4o-mini", "gpt-4o", "gpt-6-astra"]:
-                    chat_model = settings.AZURE_OPENAI_DEPLOYMENT_NAME
+                # Fall back to the deployment name only when no tier model is configured.
+                chat_model = chat_model or settings.AZURE_OPENAI_DEPLOYMENT_NAME
 
                 messages = [
                     {"role": "system", "content": SOC_CHAT_SYSTEM_PROMPT + f"\nIncident Context:\n{json.dumps(incident)}"}
@@ -570,14 +726,14 @@ class SentinelTriageAgent:
                     response = self.openai_client.chat.completions.create(
                         model=chat_model,
                         messages=messages,
-                        max_completion_tokens=2000
+                        max_completion_tokens=12000
                     )
                 except Exception as param_err:
                     if "max_completion_tokens" in str(param_err).lower() or "unsupported" in str(param_err).lower():
                         response = self.openai_client.chat.completions.create(
                             model=chat_model,
                             messages=messages,
-                            max_tokens=2000,
+                            max_tokens=12000,
                             temperature=0.2
                         )
                     else:

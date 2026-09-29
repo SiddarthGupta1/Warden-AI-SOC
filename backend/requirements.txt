@@ -16,3 +16,4 @@ pytest-asyncio>=0.23.0
 aiofiles>=23.2.1
 python-docx>=1.1.0
 ruff>=0.3.0
+reportlab>=4.0.0

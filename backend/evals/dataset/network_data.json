@@ -1,0 +1,280 @@
+{
+  "schema_version": 1,
+  "description": "Network, email and data-movement incidents. Several false positives are legitimate machine traffic (monitoring agents, backup replication, SaaS sync) whose statistical shape closely mimics beaconing or exfiltration.",
+  "category": "network_data",
+  "incidents": [
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1071.004", "T1048"],
+        "severity": "High",
+        "rationale": "High-volume TXT queries with base32-encoded subdomains to a single authoritative server is DNS tunnelling used for exfiltration."
+      },
+      "incident": {
+        "id": "nw-001",
+        "incidentNumber": 5001,
+        "title": "DNS Tunnelling - High Volume Encoded TXT Queries",
+        "description": "Host issued 41,000 DNS TXT queries in 50 minutes to subdomains of dns-sync-cdn.info, each label a 40-60 character base32 string. Aggregate payload approximates 380 MB of outbound data. The domain's authoritative nameserver is hosted on a VPS in Panama and the domain was registered 9 days ago. The host is an accounting workstation whose normal DNS volume is under 400 queries per day, and no application on it uses TXT records.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["CommandAndControl", "Exfiltration"],
+        "techniques": ["T1071.004", "T1048"],
+        "alertsCount": 3,
+        "alerts": [{"id": "a-5001", "title": "Possible DNS tunnelling", "description": "Anomalous volume of encoded DNS queries to a single domain.", "severity": "High", "vendor": "Microsoft Defender for Endpoint", "tactics": ["Exfiltration"], "techniques": ["T1048"]}],
+        "entities": [
+          {"kind": "Host", "name": "WKS-ACC-063", "os": "Windows 11 Enterprise"},
+          {"kind": "Ip", "address": "190.115.18.22", "direction": "Outbound", "location": "Panama"}
+        ],
+        "labels": ["DNSTunnelling", "Exfiltration"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1114.003", "T1564.008"],
+        "severity": "High",
+        "rationale": "Hidden inbox rule auto-forwarding finance keywords externally and deleting the originals, created after a risky sign-in, is business email compromise."
+      },
+      "incident": {
+        "id": "nw-002",
+        "incidentNumber": 5002,
+        "title": "Mailbox Rule Forwarding Finance Keywords to External Address",
+        "description": "An inbox rule named ' ' (single space, rendering it near-invisible in Outlook) was created on the finance director's mailbox. It forwards any message containing 'invoice', 'wire', 'IBAN' or 'payment' to accounts-payable@cybersecurlty-corp.com - a lookalike domain registered 4 days ago - then marks the message read and moves it to RSS Feeds. The rule was created 20 minutes after a sign-in flagged as risky from an unfamiliar ASN. The director confirms no knowledge of the rule.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["Collection", "DefenseEvasion"],
+        "techniques": ["T1114.003", "T1564.008"],
+        "alertsCount": 3,
+        "alerts": [{"id": "a-5002", "title": "Suspicious inbox forwarding rule", "description": "Rule forwarding mail to an external domain with concealment behaviour.", "severity": "High", "vendor": "Microsoft Defender for Office 365", "tactics": ["Collection"], "techniques": ["T1114.003"]}],
+        "entities": [
+          {"kind": "Account", "name": "rhaddad@cybersecurity.corp", "upn": "rhaddad@cybersecurity.corp"},
+          {"kind": "Ip", "address": "45.132.192.18", "direction": "Inbound", "location": "Lithuania"}
+        ],
+        "labels": ["BEC", "MailboxRule"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1021.002", "T1570"],
+        "severity": "High",
+        "rationale": "Sequential admin-share access across dozens of hosts with an identical executable copied to each is hands-on-keyboard lateral movement."
+      },
+      "incident": {
+        "id": "nw-003",
+        "incidentNumber": 5003,
+        "title": "Sequential SMB Admin Share Access Across 40 Hosts",
+        "description": "A single workstation authenticated to the ADMIN$ share of 40 servers in 14 minutes, writing an identical 214 KB executable to each. The executing account is a helpdesk identity with local admin rights across the fleet, whose normal pattern is 2-4 remote sessions per day initiated from the helpdesk console. These connections came from an end-user workstation outside the helpdesk VLAN, at 23:40 local, and the written binary is unsigned and matches no software inventory entry.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["LateralMovement"],
+        "techniques": ["T1021.002", "T1570"],
+        "alertsCount": 4,
+        "alerts": [{"id": "a-5003", "title": "Lateral movement via SMB admin shares", "description": "Rapid sequential administrative share access across many hosts.", "severity": "High", "vendor": "Microsoft Defender for Identity", "tactics": ["LateralMovement"], "techniques": ["T1021.002"]}],
+        "entities": [
+          {"kind": "Host", "name": "WKS-SALES-155", "os": "Windows 11 Enterprise"},
+          {"kind": "Account", "name": "hd_operator3@cybersecurity.corp", "upn": "hd_operator3@cybersecurity.corp"}
+        ],
+        "labels": ["LateralMovement", "SMB"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1090.003", "T1573"],
+        "severity": "High",
+        "rationale": "Encrypted traffic to Tor guard nodes from a server that has no business reason for anonymised egress, sustained over hours."
+      },
+      "incident": {
+        "id": "nw-004",
+        "incidentNumber": 5004,
+        "title": "Sustained Tor Network Traffic from Production Application Server",
+        "description": "SRV-WEB-07 maintained connections to four known Tor guard relays over 6 hours, transferring 4.2 GB outbound. The server hosts a customer-facing web application, has a documented egress allow-list that does not include these destinations, and previously communicated only with the internal database tier and the CDN. A web shell was found in the application's upload directory two hours into the investigation window.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["CommandAndControl", "Exfiltration"],
+        "techniques": ["T1090.003", "T1573"],
+        "alertsCount": 3,
+        "alerts": [{"id": "a-5004", "title": "Connection to anonymisation network", "description": "Outbound sessions to Tor relay infrastructure.", "severity": "High", "vendor": "Microsoft Defender for Endpoint", "tactics": ["CommandAndControl"], "techniques": ["T1090.003"]}],
+        "entities": [
+          {"kind": "Host", "name": "SRV-WEB-07", "os": "Windows Server 2022"},
+          {"kind": "Ip", "address": "171.25.193.78", "direction": "Outbound", "location": "Tor Guard Relay"}
+        ],
+        "labels": ["Tor", "WebShell"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "FALSE_POSITIVE",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Fixed-interval outbound traffic is the monitoring agent's documented telemetry heartbeat to the vendor SaaS endpoint."
+      },
+      "incident": {
+        "id": "nw-005",
+        "incidentNumber": 5005,
+        "title": "Regular Interval Beaconing Pattern from 200 Endpoints",
+        "description": "200 endpoints are making outbound HTTPS connections at a near-exact 60-second cadence with consistent payload sizes - a textbook beaconing signature. The destination is metrics.datadoghq.com, resolved to Datadog's published IP ranges, over a certificate issued to Datadog Inc. The organisation deployed the Datadog agent to this exact device group under change ticket CHG-2026-0902 four months ago, the agent is in the software inventory, and the 60-second interval is its documented default flush cadence.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["CommandAndControl"],
+        "techniques": ["T1071.001"],
+        "alertsCount": 200,
+        "alerts": [{"id": "a-5005", "title": "Beaconing behaviour detected", "description": "Periodic outbound connections with low jitter and consistent payload size.", "severity": "High", "vendor": "Microsoft Defender for Endpoint", "tactics": ["CommandAndControl"], "techniques": ["T1071.001"]}],
+        "entities": [
+          {"kind": "Host", "name": "WKS-FLEET", "os": "Windows 11 Enterprise"},
+          {"kind": "Ip", "address": "34.196.44.12", "direction": "Outbound", "location": "Datadog SaaS"}
+        ],
+        "labels": ["MonitoringAgent", "ApprovedSoftware"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "FALSE_POSITIVE",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Large overnight outbound transfer is the scheduled offsite backup replication to the contracted DR provider over a dedicated link."
+      },
+      "incident": {
+        "id": "nw-006",
+        "incidentNumber": 5006,
+        "title": "Multi-Terabyte Outbound Data Transfer Overnight",
+        "description": "2.8 TB was transferred outbound from the backup infrastructure between 01:00 and 05:30. The destination is the contracted disaster-recovery provider's published IP range, reached over the dedicated ExpressRoute circuit provisioned for this purpose. The transfer is the nightly replication job that has run on this schedule for two years; volume is within 6 percent of the trailing 30-day average, and the job's completion record matches the transferred byte count. Traffic is confined to the backup VLAN.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["Exfiltration"],
+        "techniques": ["T1048"],
+        "alertsCount": 1,
+        "alerts": [{"id": "a-5006", "title": "Large outbound data transfer", "description": "Outbound volume substantially exceeds host baseline.", "severity": "High", "vendor": "Microsoft Defender for Cloud Apps", "tactics": ["Exfiltration"], "techniques": ["T1048"]}],
+        "entities": [
+          {"kind": "Host", "name": "SRV-BACKUP-01", "os": "Windows Server 2022"},
+          {"kind": "Ip", "address": "198.51.100.30", "direction": "Outbound", "location": "DR Provider"}
+        ],
+        "labels": ["BackupReplication", "ExpressRoute"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "FALSE_POSITIVE",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Mass file downloads are the sanctioned OneDrive sync client performing a first-time full sync after a device rebuild."
+      },
+      "incident": {
+        "id": "nw-007",
+        "incidentNumber": 5007,
+        "title": "Mass File Download from SharePoint by Single User",
+        "description": "User downloaded 8,900 files (62 GB) from SharePoint over 3 hours. The activity was performed by the OneDrive sync client on the user's newly rebuilt corporate laptop, following a hardware replacement recorded in help desk ticket HD-91044 that morning. All files are within document libraries the user already had standing access to, the destination is the user's own synced folder on a compliant encrypted device, and no files left the tenant. First-time full sync of this user's libraries is expected to be exactly this size.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["Collection"],
+        "techniques": ["T1530"],
+        "alertsCount": 1,
+        "alerts": [{"id": "a-5007", "title": "Mass download by a single user", "description": "Download volume exceeds user baseline.", "severity": "Medium", "vendor": "Microsoft Defender for Cloud Apps", "tactics": ["Collection"], "techniques": ["T1530"]}],
+        "entities": [
+          {"kind": "Account", "name": "tokonkwo@cybersecurity.corp", "upn": "tokonkwo@cybersecurity.corp"},
+          {"kind": "Host", "name": "LAP-MKT-402", "os": "Windows 11 Enterprise"}
+        ],
+        "labels": ["OneDriveSync", "DeviceRebuild"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1566.002"],
+        "severity": "High",
+        "rationale": "A real phishing campaign genuinely targeted the organisation - the detection was correct and the activity was malicious. That the gateway blocked it changes the required response (none) but not the verdict. Originally mislabeled FALSE_POSITIVE; a false positive means the detection fired on non-malicious activity, which is not the case here. Corrected after the agent returned TRUE_POSITIVE consistently across independent runs."
+      },
+      "incident": {
+        "id": "nw-008",
+        "incidentNumber": 5008,
+        "title": "Credential Phishing Campaign Targeting 300 Users",
+        "description": "300 messages containing a credential-harvesting link were sent to employees. All 300 were quarantined at the gateway before delivery; zero reached an inbox. Telemetry confirms no user clicked the link because none received it, and the sending infrastructure was subsequently blocked tenant-wide. The alert reflects a detection that worked correctly. No follow-on authentication anomalies were observed for any targeted account in the following 72 hours.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["InitialAccess"],
+        "techniques": ["T1566.002"],
+        "alertsCount": 1,
+        "alerts": [{"id": "a-5008", "title": "Phishing campaign detected and blocked", "description": "Bulk credential phishing messages quarantined at the gateway.", "severity": "High", "vendor": "Microsoft Defender for Office 365", "tactics": ["InitialAccess"], "techniques": ["T1566.002"]}],
+        "entities": [
+          {"kind": "Ip", "address": "209.85.220.41", "direction": "Inbound", "location": "Unknown"}
+        ],
+        "labels": ["PhishingBlocked", "NoDelivery"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "SUSPICIOUS_ESCALATE",
+        "techniques": ["T1071.001"],
+        "severity": "Medium",
+        "rationale": "Traffic to a newly registered domain with no threat intel and a plausible business explanation that cannot be confirmed from the incident."
+      },
+      "incident": {
+        "id": "nw-009",
+        "incidentNumber": 5009,
+        "title": "Outbound Connections to Recently Registered Domain",
+        "description": "Twelve endpoints in the marketing department connected to analytics-suite-eu.com, registered 18 days ago, over standard HTTPS with a valid commercial certificate. Volume is modest and the timing follows normal working hours. The domain has no threat intelligence reputation in any feed. The marketing team recently announced a trial of a new analytics vendor in a company-wide email, but the vendor's name is not stated and no procurement record exists yet. Cannot confirm whether this is the trial or something else.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["CommandAndControl"],
+        "techniques": ["T1071.001"],
+        "alertsCount": 1,
+        "alerts": [{"id": "a-5009", "title": "Connection to newly registered domain", "description": "Outbound traffic to a domain registered within the last 30 days.", "severity": "Medium", "vendor": "Microsoft Defender for Endpoint", "tactics": ["CommandAndControl"], "techniques": ["T1071.001"]}],
+        "entities": [
+          {"kind": "Ip", "address": "51.158.44.190", "direction": "Outbound", "location": "France"},
+          {"kind": "Host", "name": "WKS-MKT-VARIOUS", "os": "Windows 11 Enterprise"}
+        ],
+        "labels": ["NewlyRegisteredDomain", "ShadowITCandidate"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "SUSPICIOUS_ESCALATE",
+        "techniques": ["T1567.002"],
+        "severity": "Medium",
+        "rationale": "Personal cloud storage upload by a user with no policy exemption, but modest volume and no other risk indicators - warrants a conversation, not containment."
+      },
+      "incident": {
+        "id": "nw-010",
+        "incidentNumber": 5010,
+        "title": "Upload to Personal Cloud Storage Account",
+        "description": "User uploaded 340 MB across 48 files to a personal Google Drive account from a corporate device. File names suggest presentation decks and images rather than structured data or source code. The user is a designer whose role involves sharing large assets with external agencies, though the organisation's sanctioned method is a managed transfer service. No DLP classification labels were present on the files, there is no resignation record, and no other risk signals exist on the account.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["Exfiltration"],
+        "techniques": ["T1567.002"],
+        "alertsCount": 1,
+        "alerts": [{"id": "a-5010", "title": "Upload to unsanctioned cloud storage", "description": "Data transfer to a personal cloud storage service.", "severity": "Medium", "vendor": "Microsoft Defender for Cloud Apps", "tactics": ["Exfiltration"], "techniques": ["T1567.002"]}],
+        "entities": [
+          {"kind": "Account", "name": "fmoreau@cybersecurity.corp", "upn": "fmoreau@cybersecurity.corp"},
+          {"kind": "Host", "name": "LAP-DSN-077", "os": "macOS 15"}
+        ],
+        "labels": ["ShadowIT", "PolicyViolation"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "BENIGN",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Port scan originates from the ISP-side CPE performing standard link diagnostics against the branch router; real traffic, no threat."
+      },
+      "incident": {
+        "id": "nw-011",
+        "incidentNumber": 5011,
+        "title": "Inbound Port Probing Against Branch Office Router",
+        "description": "Sequential probes against ports 22, 23, 80, 443 and 8080 on the branch office edge router, originating from 10.255.0.1 - the ISP-managed customer premises equipment on the WAN link, documented in the branch network diagram. The ISP performs these reachability checks on a 4-hour cycle under the managed-circuit contract, and the timing matches that cycle exactly. All probes were dropped by the router ACL and the pattern has recurred identically since the circuit was installed.",
+        "severity": "Low",
+        "status": "New",
+        "tactics": [],
+        "techniques": [],
+        "alertsCount": 1,
+        "alerts": [{"id": "a-5011", "title": "Port scanning activity", "description": "Sequential connection attempts to multiple ports.", "severity": "Low", "vendor": "Azure Firewall", "tactics": [], "techniques": []}],
+        "entities": [
+          {"kind": "Ip", "address": "10.255.0.1", "direction": "Inbound", "location": "ISP CPE"}
+        ],
+        "labels": ["ISPDiagnostics", "RecurringBenign"]
+      }
+    }
+  ]
+}

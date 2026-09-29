@@ -1,18 +1,18 @@
 # ==============================================================================
-# Microsoft Sentinel AI SOC Agent - Automated Deployment Script for AKS
+# Microsoft Warden SOC Agent - Automated Deployment Script for AKS
 # Autonomous AI Incident Triage Platform for Microsoft Sentinel & Defender XDR
 # ==============================================================================
 
 param (
     [string]$SubscriptionId = "YOUR_AZURE_SUBSCRIPTION_ID",
-    [string]$ResourceGroup  = "rg-sentinel-soc",
-    [string]$AksClusterName = "aks-sentinel-soc",
+    [string]$ResourceGroup  = "rg-warden",
+    [string]$AksClusterName = "aks-warden",
     [string]$AcrName        = "sentinelsocregistry",
     [string]$Location       = "eastus"
 )
 
 Write-Host "`n========================================================" -ForegroundColor Cyan
-Write-Host "🚀 Deploying Microsoft Sentinel AI SOC Platform to AKS" -ForegroundColor Cyan
+Write-Host "🚀 Deploying Microsoft Warden SOC Platform to AKS" -ForegroundColor Cyan
 Write-Host "========================================================`n" -ForegroundColor Cyan
 
 # 1. Select Azure Subscription
@@ -29,7 +29,7 @@ if (-not $acrExists) {
 
 # 3. Build Container in Azure ACR Cloud (Zero Docker Daemon required locally)
 Write-Host "`n🔹 Building Container Image in ACR (Multi-stage React + Python)..." -ForegroundColor Yellow
-az acr build --registry $AcrName --image "sentinel-soc-agent:latest" ..
+az acr build --registry $AcrName --image "warden-agent:latest" ..
 
 # 4. Check / Create AKS Cluster
 Write-Host "`n🔹 Checking AKS Cluster ($AksClusterName)..." -ForegroundColor Yellow
@@ -64,7 +64,7 @@ kubectl apply -k .
 
 # 7. Wait for Rollout
 Write-Host "`n⏳ Waiting for Sentinel SOC Agent rollout to complete..." -ForegroundColor Yellow
-kubectl rollout status deployment/sentinel-soc-agent -n sentinel-soc --timeout=180s
+kubectl rollout status deployment/warden-agent -n warden --timeout=180s
 
 # 8. Get Public Service IP
 Write-Host "`n========================================================" -ForegroundColor Green
@@ -72,6 +72,6 @@ Write-Host "✅ Deployment Successfully Completed!" -ForegroundColor Green
 Write-Host "========================================================`n" -ForegroundColor Green
 
 Write-Host "📡 Fetching Public Service IP / Ingress..." -ForegroundColor Cyan
-kubectl get svc -n sentinel-soc
+kubectl get svc -n warden
 
 Write-Host "`n🎉 Access your Sentinel SOC Agent via the External-IP listed above!" -ForegroundColor Green

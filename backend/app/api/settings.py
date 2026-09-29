@@ -2,10 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import Optional
 from pydantic import BaseModel
 from app.config import settings
-from app.auth.jwt_handler import get_current_user, User
+from app.auth.jwt_handler import get_current_user, require_role, User
 from app.services.sentinel_client import sentinel_client
 from app.services.kql_runner import kql_runner
 from app.services.threat_intel import threat_intel_service
+from app.services import poller
 from app.agent.triage_agent import triage_agent
 
 router = APIRouter(prefix="/settings", tags=["Configuration & Health"])
@@ -57,12 +58,37 @@ async def get_system_status(current_user: User = Depends(get_current_user)):
         bool(settings.OPENAI_API_KEY)
     )
 
+    def _sentinel_status(azure_configured: bool) -> str:
+        """Resolve the real connection state rather than restating the configuration."""
+        if settings.DEMO_MODE:
+            return "SIMULATION / DEMO MODE"
+        if not azure_configured:
+            return "NOT CONFIGURED"
+        if not getattr(sentinel_client, "is_live", False):
+            return "CONFIGURED BUT NOT CONNECTED (serving simulated data)"
+        # Credentials exist; confirm a token can actually be acquired before claiming live.
+        try:
+            if sentinel_client._get_arm_token():
+                return "CONNECTED"
+        except Exception:
+            pass
+        return "CREDENTIAL ERROR (serving simulated data)"
+
     def mask_key(k: Optional[str]) -> str:
+        """
+        Never return secret material over the API.
+
+        This previously returned the raw value to admins, so every status poll put
+        live Azure, OpenAI and threat-intel keys into an HTTP response, the browser's
+        memory, and anything logging or proxying that traffic. Being an admin is a
+        reason to be able to *set* a key, not to have it read back.
+
+        A short prefix is kept so an operator can tell which key is configured
+        without the value being usable.
+        """
         if not k:
             return ""
-        if is_admin:
-            return k
-        return "••••••••••••••••"
+        return f"{k[:4]}…{'•' * 12}" if len(k) > 8 else "•" * 12
 
     return {
         "app_name": settings.APP_NAME,
@@ -77,7 +103,12 @@ async def get_system_status(current_user: User = Depends(get_current_user)):
             "tenant_id": mask_key(settings.AZURE_TENANT_ID),
             "client_id": mask_key(settings.AZURE_CLIENT_ID),
             "managed_identity": settings.USE_MANAGED_IDENTITY,
-            "status": "CONNECTED" if (azure_configured and not settings.DEMO_MODE) else "SIMULATION / DEMO MODE"
+            # Report what the client actually resolved to, not what the config asks for.
+            # Credentials can be fully populated and still fail to acquire a token - for
+            # example DefaultAzureCredential inside a container with no az CLI session and
+            # no managed identity - in which case the client silently serves simulated
+            # incidents. Previously this said CONNECTED in exactly that situation.
+            "status": _sentinel_status(azure_configured),
         },
         "llm_engine": {
             "provider": settings.LLM_PROVIDER,
@@ -85,8 +116,8 @@ async def get_system_status(current_user: User = Depends(get_current_user)):
             "endpoint": mask_key(settings.AZURE_OPENAI_ENDPOINT),
             "deployment": settings.AZURE_OPENAI_DEPLOYMENT_NAME if settings.LLM_PROVIDER == "azure_openai" else settings.FAST_MODEL_NAME,
             "routing_mode": getattr(settings, "LLM_ROUTING_MODE", "hybrid"),
-            "fast_model": getattr(settings, "FAST_MODEL_NAME", "gpt-4o-mini"),
-            "reasoning_model": getattr(settings, "REASONING_MODEL_NAME", "gpt-6-astra"),
+            "fast_model": settings.FAST_MODEL_NAME,
+            "reasoning_model": settings.REASONING_MODEL_NAME,
             "status": "ONLINE (HYBRID AI ROUTING)" if getattr(settings, "LLM_ROUTING_MODE", "hybrid") == "hybrid" else f"ONLINE ({getattr(settings, 'LLM_ROUTING_MODE', 'hybrid').upper()})"
         },
         "threat_intelligence": {
@@ -100,14 +131,19 @@ async def get_system_status(current_user: User = Depends(get_current_user)):
             "status": "ACTIVE" if (settings.ABUSEIPDB_API_KEY or settings.VIRUSTOTAL_API_KEY or settings.ENABLE_MICROSOFT_THREAT_INTEL) else "SIMULATED / DEMO FEEDS"
         },
         "auto_triage": {
-            "enabled": settings.ENABLE_AUTO_POLLING,
+            # Report whether the poller loop is actually running, not just whether
+            # the flag is set. The flag alone was reported here while no loop existed.
+            **poller.status(),
             "auto_post_comments": settings.AUTO_POST_COMMENTS_TO_SENTINEL,
             "auto_close_fps": settings.AUTO_CLOSE_FALSE_POSITIVES
         }
     }
 
 @router.post("/update")
-async def update_system_settings(req: SettingsUpdateRequest, current_user: User = Depends(get_current_user)):
+async def update_system_settings(req: SettingsUpdateRequest, current_user: User = Depends(require_role("admin"))):
+    # This endpoint rewrites Azure credentials, model keys and DEMO_MODE, and
+    # persists them to the .env file. Previously any authenticated analyst could
+    # call it.
     """Update Azure, LLM, and Threat Intelligence parameters directly from the portal (SOC Admin Only)"""
     if current_user.role != "admin":
         raise HTTPException(
@@ -186,11 +222,11 @@ async def update_system_settings(req: SettingsUpdateRequest, current_user: User 
             f"LLM_PROVIDER={settings.LLM_PROVIDER}",
             f"AZURE_OPENAI_ENDPOINT={settings.AZURE_OPENAI_ENDPOINT or ''}",
             f"AZURE_OPENAI_API_KEY={settings.AZURE_OPENAI_API_KEY or ''}",
-            f"AZURE_OPENAI_DEPLOYMENT_NAME={settings.AZURE_OPENAI_DEPLOYMENT_NAME or 'gpt-4o'}",
+            f"AZURE_OPENAI_DEPLOYMENT_NAME={settings.AZURE_OPENAI_DEPLOYMENT_NAME or ''}",
             f"OPENAI_API_KEY={settings.OPENAI_API_KEY or ''}",
             f"LLM_ROUTING_MODE={getattr(settings, 'LLM_ROUTING_MODE', 'hybrid')}",
-            f"FAST_MODEL_NAME={getattr(settings, 'FAST_MODEL_NAME', 'gpt-4o-mini')}",
-            f"REASONING_MODEL_NAME={getattr(settings, 'REASONING_MODEL_NAME', 'gpt-6-astra')}",
+            f"FAST_MODEL_NAME={settings.FAST_MODEL_NAME}",
+            f"REASONING_MODEL_NAME={settings.REASONING_MODEL_NAME}",
             f"ENABLE_MICROSOFT_THREAT_INTEL={str(settings.ENABLE_MICROSOFT_THREAT_INTEL)}",
             f"MDTI_API_KEY={settings.MDTI_API_KEY or ''}",
             f"ABUSEIPDB_API_KEY={settings.ABUSEIPDB_API_KEY or ''}",
@@ -252,7 +288,7 @@ async def test_connection(current_user: User = Depends(get_current_user)):
     test_results["ai_engine"] = {
         "status": "PASS",
         "provider": settings.LLM_PROVIDER,
-        "model": settings.AZURE_OPENAI_DEPLOYMENT_NAME if settings.LLM_PROVIDER == "azure_openai" else "gpt-4o"
+        "model": settings.AZURE_OPENAI_DEPLOYMENT_NAME if settings.LLM_PROVIDER == "azure_openai" else settings.FAST_MODEL_NAME
     }
 
     # 4. Test Threat Intel Providers

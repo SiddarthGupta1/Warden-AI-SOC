@@ -55,7 +55,7 @@ export default function Navbar({ activeTab, setActiveTab, user, theme, toggleThe
             <div className="hidden sm:block">
               <div className="flex items-center space-x-2">
                 <span className="font-bold text-base text-slate-900 dark:text-white tracking-wide">
-                  Sentinel AI SOC
+                  Warden SOC
                 </span>
               </div>
               <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300 tracking-tight">

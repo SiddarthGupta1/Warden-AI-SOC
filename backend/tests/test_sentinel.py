@@ -30,17 +30,37 @@ async def test_kql_execution():
     assert len(res["tables"]) > 0
 
 @pytest.mark.asyncio
-async def test_get_playbooks():
+async def test_get_playbooks_offers_only_real_workflows_when_live():
+    """
+    The selector must not offer playbooks that do not exist.
+
+    This previously merged a hardcoded catalogue of eight playbook names into the
+    live result, so the UI listed containment options that could only fail when
+    invoked. In live mode the list must come from deployed Logic Apps; in demo mode
+    the sample catalogue is allowed but must be labelled as such.
+    """
     playbooks = await sentinel_client.get_playbooks()
-    assert len(playbooks) >= 8
-    names = [p["name"] for p in playbooks]
-    assert "SOAR-Isolate-Endpoint-LogicApp" in names
-    assert "SOAR-Revoke-User-Sessions-LogicApp" in names
-    assert "SOAR-Block-Malicious-IP-LogicApp" in names
-    assert "SOAR-Full-Incident-Containment-Playbook" in names
+    assert isinstance(playbooks, list)
+    for p in playbooks:
+        assert p.get("name"), "every playbook needs a name to be invocable"
+
+    if sentinel_client.is_live:
+        # Nothing fabricated: sample entries must not leak into a live listing.
+        categories = {p.get("category") for p in playbooks}
+        assert "Sample (demo mode)" not in categories, \
+            "demo catalogue leaked into the live playbook list"
+    else:
+        assert playbooks, "demo mode should still offer sample playbooks"
+        assert all(p.get("category") == "Sample (demo mode)" for p in playbooks), \
+            "demo playbooks must be labelled so they are not mistaken for deployed ones"
 
 @pytest.mark.asyncio
-async def test_trigger_playbook():
+async def test_trigger_playbook_reports_truthfully():
+    """
+    A playbook that was not actually invoked must NOT be reported as SUCCESS, and must
+    not apply SOAR containment tags. Against a workspace with no such Logic App the
+    correct outcome is FAILED (or NOT_PERMITTED), with tags withheld.
+    """
     from app.services.remediation_service import remediation_service
     res = await remediation_service.execute_remediation(
         incident_id="inc-2026-9041",
@@ -49,8 +69,34 @@ async def test_trigger_playbook():
         analyst_name="Test Analyst",
         parameters={"playbook_name": "SOAR-Revoke-User-Sessions-LogicApp", "notes": "Test containment"}
     )
-    assert res["status"] == "SUCCESS"
-    assert "run_id" in res
-    assert res["playbook_name"] == "SOAR-Revoke-User-Sessions-LogicApp"
-    assert "Playbook:SOAR-Revoke-User-Sessions-LogicApp" in res["applied_tags"]
-    assert "SOAR-Automated" in res["applied_tags"]
+    assert res["status"] in {"SUCCESS", "SIMULATED", "NOT_PERMITTED", "FAILED"}
+    assert res["action_type"] == "trigger_playbook"
+    assert res["result_message"]
+
+    if res["status"] == "SUCCESS":
+        assert "run_id" in res
+        assert "Playbook:SOAR-Revoke-User-Sessions-LogicApp" in res["applied_tags"]
+        assert "SOAR-Automated" in res["applied_tags"]
+    else:
+        # Nothing happened, so nothing may claim it did.
+        assert res["applied_tags"] == []
+
+
+@pytest.mark.asyncio
+async def test_containment_never_claims_unverified_success():
+    """Identity containment must not report SUCCESS unless the platform confirmed it."""
+    from app.services.remediation_service import remediation_service
+    for action, entity in [
+        ("disable_account", "jdoe@cybersecurity.corp"),
+        ("revoke_sessions", "jdoe@cybersecurity.corp"),
+        ("isolate_endpoint", "WKS-EXEC-094"),
+    ]:
+        res = await remediation_service.execute_remediation(
+            incident_id="inc-2026-9041",
+            action_type=action,
+            entity=entity,
+            analyst_name="Test Analyst",
+        )
+        assert res["status"] in {"SUCCESS", "SIMULATED", "NOT_PERMITTED", "FAILED"}
+        if res["status"] != "SUCCESS":
+            assert res["applied_tags"] == [], f"{action} applied containment tags without succeeding"

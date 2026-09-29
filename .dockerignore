@@ -1,0 +1,43 @@
+# Dependency trees must be installed inside the image, never copied from the host.
+# The frontend build stage runs `npm ci` and then `COPY frontend/ ./`, so without
+# this a host node_modules (built for the host OS/arch) would overwrite the
+# container's own install.
+node_modules/
+**/node_modules/
+venv/
+**/venv/
+.venv/
+**/__pycache__/
+*.py[cod]
+
+# Secrets and local state must never enter the build context.
+.env
+*.env
+!.env.example
+**/.env
+!**/.env.example
+*.db
+*.db-wal
+*.db-shm
+backend/data/
+aks/secret.yaml
+
+# Build output is produced inside the image.
+dist/
+**/dist/
+.vite/
+
+# Not needed at runtime.
+.git/
+.github/
+.gitignore
+.vscode/
+.idea/
+aks/
+backend/evals/
+backend/tests/
+*.md
+!README.md
+run-backend.bat
+run-frontend.bat
+setup-prerequisites.ps1

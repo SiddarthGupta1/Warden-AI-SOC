@@ -761,7 +761,7 @@ class SentinelClient:
                                     props["classificationReason"] = classification_reason or "InaccurateData"
                                 elif cls == "BenignPositive":
                                     props["classificationReason"] = classification_reason or "SuspiciousButExpected"
-                                props["classificationComment"] = classification_comment or "Closed via Microsoft Sentinel AI Triage Platform"
+                                props["classificationComment"] = classification_comment or "Closed via Warden"
                             elif status in ["New", "Active"]:
                                 # Clear closing metadata when reopening
                                 props.pop("classification", None)
@@ -1011,11 +1011,21 @@ class SentinelClient:
 
     async def get_playbooks(self) -> List[Dict[str, Any]]:
         """
-        Retrieves available Azure Logic Apps (Sentinel SOAR Playbooks) in the resource group.
-        Queries Azure ARM API when live credentials are active and merges with the Sentinel Playbook catalog.
+        Retrieve the Azure Logic Apps that exist in the configured resource group.
+
+        In live mode this returns ONLY workflows that are actually deployed. It used
+        to merge in a hardcoded catalogue of eight playbook names that had never been
+        created, so the selector offered containment options that could only fail when
+        invoked. A playbook that does not exist is not an option.
+
+        In demo mode the catalogue is returned so the UI has something to show, and it
+        is labelled as sample data.
         """
-        playbooks = list(DEFAULT_PLAYBOOKS)
-        seen_names = {p["name"].lower() for p in playbooks}
+        if not (self.is_live and self.subscription_id and self.resource_group):
+            return [{**p, "category": "Sample (demo mode)"} for p in DEFAULT_PLAYBOOKS]
+
+        playbooks: List[Dict[str, Any]] = []
+        seen_names: set = set()
 
         if self.is_live and self.subscription_id and self.resource_group:
             token = self._get_arm_token()
@@ -1048,6 +1058,217 @@ class SentinelClient:
 
         return playbooks
 
+    def _get_graph_token(self) -> Optional[str]:
+        """Acquire a Microsoft Graph token from the active credential."""
+        if not self.credential:
+            return None
+        try:
+            tok = self.credential.get_token("https://graph.microsoft.com/.default")
+            return tok.token if tok else None
+        except Exception as e:
+            logger.debug(f"Could not acquire Microsoft Graph token: {e}")
+            return None
+
+    async def _resolve_entra_user_id(self, upn: str) -> Optional[str]:
+        """Resolve a UPN to an Entra object id. Returns None if not found or not permitted."""
+        token = self._get_graph_token()
+        if not token:
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r = await client.get(
+                    f"https://graph.microsoft.com/v1.0/users/{upn}?$select=id,accountEnabled",
+                    headers={"Authorization": f"Bearer {token}"}
+                )
+                if r.status_code == 200:
+                    return r.json().get("id")
+                logger.warning(f"Graph user lookup for {upn} returned HTTP {r.status_code}: {r.text[:200]}")
+        except Exception as e:
+            logger.warning(f"Graph user lookup failed for {upn}: {e}")
+        return None
+
+    async def disable_entra_account(self, upn: str) -> Dict[str, Any]:
+        """
+        Disable a user in Microsoft Entra ID (PATCH accountEnabled=false), then RE-READ the
+        user to confirm the change actually took effect. Never reports success on an
+        unverified write.
+        Requires Graph application permission User.ReadWrite.All with admin consent.
+        """
+        token = self._get_graph_token()
+        if not token:
+            return {"status": "NOT_PERMITTED", "message": "No Microsoft Graph token available. Account containment requires Graph credentials."}
+
+        user_id = await self._resolve_entra_user_id(upn)
+        if not user_id:
+            return {"status": "FAILED", "message": f"Could not resolve '{upn}' in Entra ID (user absent, or directory read not permitted for this identity)."}
+
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                patch = await client.patch(
+                    f"https://graph.microsoft.com/v1.0/users/{user_id}",
+                    headers=headers, json={"accountEnabled": False}
+                )
+                if patch.status_code == 403:
+                    return {"status": "NOT_PERMITTED", "message": "Microsoft Graph denied the request (403). Disabling accounts requires User.ReadWrite.All with tenant admin consent."}
+                if patch.status_code not in (200, 204):
+                    return {"status": "FAILED", "message": f"Graph PATCH returned HTTP {patch.status_code}: {patch.text[:200]}"}
+
+                # Verify: re-read the user and confirm the account is actually disabled.
+                verify = await client.get(
+                    f"https://graph.microsoft.com/v1.0/users/{user_id}?$select=accountEnabled",
+                    headers=headers
+                )
+                if verify.status_code == 200 and verify.json().get("accountEnabled") is False:
+                    return {
+                        "status": "SUCCESS",
+                        "verified": True,
+                        "message": f"Account '{upn}' disabled in Entra ID and verified as accountEnabled=false.",
+                        "object_id": user_id
+                    }
+                return {"status": "FAILED", "verified": False, "message": f"PATCH accepted but verification read did not confirm the account is disabled (HTTP {verify.status_code})."}
+        except Exception as e:
+            return {"status": "FAILED", "message": f"Graph request error while disabling '{upn}': {e}"}
+
+    async def revoke_entra_sessions(self, upn: str) -> Dict[str, Any]:
+        """
+        Invalidate all refresh tokens / sessions for a user via Graph revokeSignInSessions.
+        Requires User.ReadWrite.All with admin consent.
+        """
+        token = self._get_graph_token()
+        if not token:
+            return {"status": "NOT_PERMITTED", "message": "No Microsoft Graph token available. Session revocation requires Graph credentials."}
+
+        user_id = await self._resolve_entra_user_id(upn)
+        if not user_id:
+            return {"status": "FAILED", "message": f"Could not resolve '{upn}' in Entra ID."}
+
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                r = await client.post(
+                    f"https://graph.microsoft.com/v1.0/users/{user_id}/revokeSignInSessions",
+                    headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+                )
+                if r.status_code == 403:
+                    return {"status": "NOT_PERMITTED", "message": "Microsoft Graph denied the request (403). Session revocation requires User.ReadWrite.All with tenant admin consent."}
+                if r.status_code in (200, 204):
+                    return {"status": "SUCCESS", "verified": True, "message": f"All refresh tokens and sessions revoked for '{upn}'.", "object_id": user_id}
+                return {"status": "FAILED", "message": f"Graph revokeSignInSessions returned HTTP {r.status_code}: {r.text[:200]}"}
+        except Exception as e:
+            return {"status": "FAILED", "message": f"Graph request error while revoking sessions for '{upn}': {e}"}
+
+    async def block_ip_indicator(self, ip_address: str, incident_id: str, analyst_name: str, ttl_days: int = 90) -> Dict[str, Any]:
+        """
+        Publish the IP as a Sentinel Threat Intelligence indicator with a Block action,
+        then re-read it to confirm it was persisted.
+        This is a first-party ARM write and works with Sentinel Contributor rights.
+        """
+        token = self._get_arm_token()
+        if not token:
+            return {"status": "NOT_PERMITTED", "message": "No ARM token available for the Sentinel workspace."}
+
+        sub, rg, ws = settings.AZURE_SUBSCRIPTION_ID, settings.AZURE_RESOURCE_GROUP_NAME, settings.AZURE_WORKSPACE_NAME
+        if not (sub and rg and ws):
+            return {"status": "FAILED", "message": "Sentinel workspace coordinates are not configured."}
+
+        now = datetime.utcnow()
+        # The indicator name is server-assigned; creating via a named PUT is rejected with
+        # "Invalid id that does not match data.id". Use the createIndicator action instead.
+        ti_root = (f"https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}"
+                   f"/providers/Microsoft.OperationalInsights/workspaces/{ws}"
+                   f"/providers/Microsoft.SecurityInsights/threatIntelligence/main")
+        payload = {
+            "kind": "indicator",
+            "properties": {
+                "displayName": f"Blocked by AI SOC triage - {ip_address}",
+                "description": f"Blocked during triage of incident {incident_id} by {analyst_name}.",
+                "pattern": f"[ipv4-addr:value = '{ip_address}']",
+                "patternType": "ipv4-addr",
+                "source": "AI SOC Agent",
+                "threatTypes": ["malicious-activity"],
+                "validFrom": now.isoformat() + "Z",
+                "validUntil": (now + timedelta(days=ttl_days)).isoformat() + "Z",
+                "confidence": 90,
+                "labels": ["warden", f"incident:{incident_id}"]
+            }
+        }
+        try:
+            headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                r = await client.post(
+                    f"{ti_root}/createIndicator?api-version=2024-03-01",
+                    headers=headers, json=payload
+                )
+                if r.status_code == 403:
+                    return {"status": "NOT_PERMITTED", "message": "ARM denied the indicator write (403). Requires Microsoft Sentinel Contributor on the workspace."}
+                if r.status_code not in (200, 201):
+                    return {"status": "FAILED", "message": f"Indicator create returned HTTP {r.status_code}: {r.text[:200]}"}
+
+                name = r.json().get("name")
+                # Verify the indicator is actually retrievable after the write.
+                verify = await client.get(f"{ti_root}/indicators/{name}?api-version=2024-03-01", headers=headers)
+                if verify.status_code == 200:
+                    return {
+                        "status": "SUCCESS",
+                        "verified": True,
+                        "indicator_id": name,
+                        "valid_until": payload["properties"]["validUntil"],
+                        "message": (f"IP {ip_address} published to the Sentinel threat intelligence feed as a blocked "
+                                    f"indicator (id {name}), verified present, expiring in {ttl_days} days. "
+                                    f"Perimeter enforcement depends on a firewall policy consuming this feed.")
+                    }
+                return {"status": "FAILED", "verified": False, "message": f"Indicator created but read-back failed (HTTP {verify.status_code})."}
+        except Exception as e:
+            return {"status": "FAILED", "message": f"ARM request error while publishing indicator for {ip_address}: {e}"}
+
+    async def isolate_device(self, hostname: str, incident_id: str) -> Dict[str, Any]:
+        """
+        Isolate an endpoint via the Microsoft Defender for Endpoint API.
+        Requires a Defender for Endpoint tenant and Machine.Isolate application permission.
+        """
+        if not self.credential:
+            return {"status": "NOT_PERMITTED", "message": "No credential available for Microsoft Defender for Endpoint."}
+        try:
+            tok = self.credential.get_token("https://api.securitycenter.microsoft.com/.default")
+        except Exception as e:
+            return {"status": "NOT_PERMITTED", "message": f"Could not acquire a Defender for Endpoint token ({e}). Endpoint isolation requires a licensed Defender for Endpoint tenant."}
+
+        headers = {"Authorization": f"Bearer {tok.token}", "Content-Type": "application/json"}
+        try:
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                lookup = await client.get(
+                    f"https://api.securitycenter.microsoft.com/api/machines?$filter=computerDnsName eq '{hostname}'",
+                    headers=headers
+                )
+                if lookup.status_code == 403:
+                    return {"status": "NOT_PERMITTED", "message": "Defender for Endpoint denied the request (403). Requires Machine.Isolate application permission."}
+                if lookup.status_code != 200:
+                    return {"status": "FAILED", "message": f"Defender machine lookup returned HTTP {lookup.status_code}: {lookup.text[:200]}"}
+                machines = lookup.json().get("value", [])
+                if not machines:
+                    return {"status": "FAILED", "message": f"Host '{hostname}' is not onboarded to Microsoft Defender for Endpoint."}
+
+                machine_id = machines[0].get("id")
+                action = await client.post(
+                    f"https://api.securitycenter.microsoft.com/api/machines/{machine_id}/isolate",
+                    headers=headers,
+                    json={"Comment": f"Isolated by AI SOC triage for incident {incident_id}", "IsolationType": "Full"}
+                )
+                if action.status_code in (200, 201):
+                    body = action.json()
+                    return {
+                        "status": "SUCCESS",
+                        "verified": False,
+                        "machine_id": machine_id,
+                        "action_id": body.get("id"),
+                        "message": (f"Isolation accepted by Defender for Endpoint for '{hostname}' "
+                                    f"(action {body.get('id')}, current state {body.get('status')}). "
+                                    f"Isolation completes asynchronously - poll the machine action for the final state.")
+                    }
+                return {"status": "FAILED", "message": f"Defender isolate returned HTTP {action.status_code}: {action.text[:200]}"}
+        except Exception as e:
+            return {"status": "FAILED", "message": f"Defender for Endpoint request error for '{hostname}': {e}"}
+
     async def trigger_playbook(
         self,
         incident_id: str,
@@ -1056,35 +1277,63 @@ class SentinelClient:
         analyst_name: str = "SOC Lead Analyst"
     ) -> Dict[str, Any]:
         """
-        Triggers an Azure Logic App / Sentinel SOAR playbook for a specific incident.
-        Posts an audit tracking comment and applies tags into Microsoft Sentinel.
+        Actually invoke an Azure Logic App playbook: resolve its HTTP trigger, fetch the
+        callback URL from ARM, and POST the incident context to it.
+        Returns FAILED rather than a fabricated run id when the Logic App cannot be reached.
         """
         parameters = parameters or {}
-        run_id = f"run-{uuid.uuid4().hex[:8]}"
-        timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
         notes = parameters.get("notes", "Automated SOAR response pipeline initiated by analyst.")
 
-        logger.info(f"Triggering Logic App Playbook '{playbook_name}' for incident {incident_id} (Run ID: {run_id})")
+        token = self._get_arm_token()
+        sub, rg = settings.AZURE_SUBSCRIPTION_ID, settings.AZURE_RESOURCE_GROUP_NAME
+        if not token or not (sub and rg):
+            return {"status": "NOT_PERMITTED", "message": "No ARM token or subscription/resource-group configured; cannot invoke a Logic App."}
 
-        # 1. Post audit comment to Sentinel
-        comment_body = f"⚡ **Sentinel SOAR Playbook Execution**\nPlaybook: `{playbook_name}`\nTriggered by: **{analyst_name}**\nRun ID: `{run_id}`\nTimestamp: {timestamp}\nNotes: {notes}"
-        await self.add_comment(incident_id, comment_body, author=analyst_name)
+        wf_base = (f"https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}"
+                   f"/providers/Microsoft.Logic/workflows/{playbook_name}")
+        try:
+            async with httpx.AsyncClient(timeout=25.0) as client:
+                headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
-        # 2. Add tag to incident
-        clean_playbook_tag = f"Playbook:{playbook_name}"
-        await self.update_status(
-            incident_id=incident_id,
-            labels=[clean_playbook_tag, "SOAR-Automated"],
-            updated_by=analyst_name
-        )
+                triggers = await client.get(f"{wf_base}/triggers?api-version=2016-06-01", headers=headers)
+                if triggers.status_code == 404:
+                    return {"status": "FAILED", "message": f"Logic App '{playbook_name}' does not exist in resource group '{rg}'."}
+                if triggers.status_code == 403:
+                    return {"status": "NOT_PERMITTED", "message": "ARM denied access to the Logic App (403). Requires Logic App Contributor."}
+                if triggers.status_code != 200:
+                    return {"status": "FAILED", "message": f"Listing Logic App triggers returned HTTP {triggers.status_code}: {triggers.text[:200]}"}
 
-        return {
-            "status": "SUCCESS",
-            "run_id": run_id,
-            "playbook_name": playbook_name,
-            "executed_at": datetime.utcnow().isoformat() + "Z",
-            "message": f"Successfully triggered Azure Logic App playbook '{playbook_name}'. Run ID: {run_id}."
-        }
+                trigger_list = triggers.json().get("value", [])
+                if not trigger_list:
+                    return {"status": "FAILED", "message": f"Logic App '{playbook_name}' has no triggers defined."}
+                trigger_name = trigger_list[0].get("name", "manual")
+
+                cb = await client.post(f"{wf_base}/triggers/{trigger_name}/listCallbackUrl?api-version=2016-06-01", headers=headers)
+                if cb.status_code != 200:
+                    return {"status": "FAILED", "message": f"Could not obtain a callback URL for trigger '{trigger_name}' (HTTP {cb.status_code}). The trigger must be an HTTP request trigger."}
+                callback_url = cb.json().get("value")
+
+                run = await client.post(callback_url, json={
+                    "incidentId": incident_id,
+                    "playbook": playbook_name,
+                    "triggeredBy": analyst_name,
+                    "notes": notes,
+                    "parameters": parameters
+                })
+                if run.status_code not in (200, 201, 202):
+                    return {"status": "FAILED", "message": f"Logic App invocation returned HTTP {run.status_code}: {run.text[:200]}"}
+
+                run_id = run.headers.get("x-ms-workflow-run-id") or run.headers.get("x-ms-request-id") or "accepted"
+                return {
+                    "status": "SUCCESS",
+                    "verified": True,
+                    "run_id": run_id,
+                    "playbook_name": playbook_name,
+                    "executed_at": datetime.utcnow().isoformat() + "Z",
+                    "message": f"Logic App '{playbook_name}' invoked via trigger '{trigger_name}' (HTTP {run.status_code}, run id {run_id})."
+                }
+        except Exception as e:
+            return {"status": "FAILED", "message": f"Error invoking Logic App '{playbook_name}': {e}"}
 
 
 DEFAULT_PLAYBOOKS: List[Dict[str, Any]] = [

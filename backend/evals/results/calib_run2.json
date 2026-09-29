@@ -1,0 +1,2332 @@
+{
+  "summary": {
+    "run_at": "2026-09-28T21:59:46.203631+00:00",
+    "model": "gpt-5-mini",
+    "provider": "azure_openai",
+    "demo_mode": false,
+    "incidents": 56,
+    "llm_backed": true,
+    "accuracy": 0.8035714285714286,
+    "correct": 45,
+    "operational_accuracy": 0.9464285714285714,
+    "label_only_errors": 8,
+    "agent_errors": 0,
+    "missed_threats": 1,
+    "missed_threat_rate": 0.043478260869565216,
+    "false_alarms": 0,
+    "false_alarm_rate": 0.0,
+    "technique_recall_mean": 0.8535353535353535,
+    "technique_precision_mean": 0.7828282828282829,
+    "latency_mean_s": 34.31,
+    "latency_median_s": 32.99,
+    "confidence_when_correct": 76.4,
+    "confidence_when_wrong": 78.9,
+    "confidence_mean": 76.9,
+    "confidence_stdev": 5.0,
+    "confidence_min": 60,
+    "confidence_max": 80,
+    "ece": 0.0916,
+    "calibration_buckets": {
+      "60-70": {
+        "n": 5,
+        "accuracy": 1.0,
+        "mean_confidence": 0.63,
+        "gap": -0.37
+      },
+      "70-80": {
+        "n": 19,
+        "accuracy": 0.8421052631578947,
+        "mean_confidence": 0.7536842105263157,
+        "gap": -0.08842105263157896
+      },
+      "80-90": {
+        "n": 32,
+        "accuracy": 0.75,
+        "mean_confidence": 0.8,
+        "gap": 0.050000000000000044
+      }
+    },
+    "evidence_gaps_mean": 7.18,
+    "incidents_reporting_gaps": 56,
+    "gap_cap_violations": 0,
+    "tokens": {
+      "prompt": 138000,
+      "completion": 201838,
+      "reasoning": 105088,
+      "llm_calls": 56,
+      "per_incident": 6069
+    },
+    "estimated_cost_usd": null,
+    "confusion_matrix": {
+      "TRUE_POSITIVE": {
+        "TRUE_POSITIVE": 20,
+        "SUSPICIOUS_ESCALATE": 2,
+        "BENIGN": 1
+      },
+      "FALSE_POSITIVE": {
+        "FALSE_POSITIVE": 14,
+        "BENIGN": 3
+      },
+      "SUSPICIOUS_ESCALATE": {
+        "SUSPICIOUS_ESCALATE": 10
+      },
+      "BENIGN": {
+        "FALSE_POSITIVE": 5,
+        "BENIGN": 1
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "cl-001",
+      "category": "cloud",
+      "title": "Storage Container Made Public Followed by Bulk Anonymous Download",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 75,
+      "evidence_gaps": [
+        "SigninLogs query returned zero rows (SigninLogs | where TimeGenerated >= ago(24h) ... returned 0) \u2014 could not corroborate interactive/authentication event for bkovac at time of API call.",
+        "No AzureActivity / AuditLogs export included in incident payload to show the precise timestamp, OperationName, JSON payload, or authentication method used for the REST API call (e.g., Azure AD auth vs storage key vs SAS).",
+        "No StorageAnalytics/BlobAccess logs or KQL results provided to validate full client IP timeline, user-agent strings, or per-request timestamps beyond the summary counts.",
+        "No evidence provided whether bkovac's account has MFA, recent password changes, or whether a service principal or managed identity associated with bkovac was used.",
+        "No change ticket or change-management approval record supplied \u2014 cannot verify authorized change from business processes.",
+        "Threat intelligence for the downloading IP is sparse (clean on this check) \u2014 additional external intel feeds or passive DNS were not queried here."
+      ],
+      "evidence_gap_count": 6,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1530",
+        "T1567"
+      ],
+      "predicted_techniques": [
+        "T1530",
+        "T1567"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 54.18,
+      "usage": {
+        "prompt_tokens": 2251,
+        "completion_tokens": 5100,
+        "reasoning_tokens": 3136,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Storage container made publicly readable then bulk-downloaded from an external IP within minutes, by an identity with no storage responsibilities."
+    },
+    {
+      "id": "cl-002",
+      "category": "cloud",
+      "title": "Bulk Key Vault Secret Retrieval by Service Principal",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 75,
+      "evidence_gaps": [
+        "SigninLogs query returned zero rows for the last 24h (SigninLogs | where TimeGenerated >= ago(24h) | summarize ...) \u2014 no interactive sign-in audit evidence available in the workspace (zero rows).",
+        "No Key Vault diagnostic logs (AzureDiagnostics for kv-prod-core / Microsoft.KeyVault) were supplied or queried to show Get/Secret operations with timestamps and caller details \u2014 unable to independently validate exact GET Secret request logs.",
+        "No Azure AD AuditLogs / Microsoft Graph AuditEvents query results provided to confirm the client secret creation event (servicePrincipalCredentialAdded) and its originating principal/IP.",
+        "No Azure Activity / Resource logs were returned showing which principal or managed identity created the client secret, and from what IP/host.",
+        "Unable to query network flow / NSG / AKS egress logs to confirm whether known AKS egress IP matches or differs from 5.188.62.140.",
+        "No telemetry shown that confirms the retrieved secrets were exported off-cloud or used to access downstream resources (no proof of exfiltration or follow-on access).",
+        "Threat intelligence for 5.188.62.140 showed no abuse reports in the provided feed \u2014 additional external TI sources (VirusTotal, AbuseIPDB, commercial feeds) were not checked or returned.",
+        "No process-level or host-level evidence (PIDs, process tree) is available because the activity was performed by an application identity (service principal) rather than a process on a managed host."
+      ],
+      "evidence_gap_count": 8,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1078.004",
+        "T1552.001"
+      ],
+      "predicted_techniques": [
+        "T1078.004",
+        "T1552.001"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 37.4,
+      "usage": {
+        "prompt_tokens": 2238,
+        "completion_tokens": 4089,
+        "reasoning_tokens": 2112,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Bulk secret enumeration from a Key Vault by a service principal authenticating from an unusual ASN, reading secrets far outside its normal scope."
+    },
+    {
+      "id": "cl-003",
+      "category": "cloud",
+      "title": "Unauthorised GPU Virtual Machine Deployment with Mining Pool Traffic",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "SigninLogs query executed (SigninLogs | where TimeGenerated >= ago(24h) | summarize count(), make_set(IPAddress), make_set(Location) by UserPrincipalName) returned zero rows from the provided workspace \u2014 cannot independently verify the authentication events and source IPs for afernandez@cybersecurity.corp.",
+        "No Azure Activity Log entries or the specific role/principal recorded for the VM provisioning were provided; cannot see which principal/client_id performed the resource group creation and VM provisioning.",
+        "No VM hostnames, private IPs, or VM instance IDs were provided in the incident \u2014 cannot snapshot or isolate specific instances without those identifiers.",
+        "No endpoint/process telemetry (DeviceProcessEvents, Sysmon, or guest OS logs) was provided to confirm mining process names (e.g., xmrig) or command lines executed on the VMs.",
+        "No NSG flow logs, NetworkWatcher connection logs, or bytes/duration telemetry were provided to quantify the outbound traffic beyond the statement 'sustained outbound connections'.",
+        "No DNS logs or IOC lookup for pool.minexmr.com were provided in the dataset \u2014 reputation and historical resolution details for the domain are not present in the incident payload.",
+        "No MFA/enrollment, recent password changes, or conditional access policy logs were provided for afernandez@cybersecurity.corp.",
+        "No Azure billing/chargeback logs or subscription owner change tickets were provided to confirm whether the spend was flagged elsewhere."
+      ],
+      "evidence_gap_count": 8,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1496"
+      ],
+      "predicted_techniques": [
+        "T1078",
+        "T1496"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 0.5,
+      "latency_s": 49.84,
+      "usage": {
+        "prompt_tokens": 2215,
+        "completion_tokens": 3876,
+        "reasoning_tokens": 1792,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "GPU VM fleet deployed in an unused region by a compromised identity, connecting to mining pools - resource hijacking."
+    },
+    {
+      "id": "cl-004",
+      "category": "cloud",
+      "title": "Mass Deletion of Production Resources Including Recovery Vaults",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 78,
+      "evidence_gaps": [
+        "SigninLogs query returned 0 rows for SigninLogs (SigninLogs | where TimeGenerated >= ago(24h) | summarize ...). No successful sign-in records available in the provided KQL output to confirm the interactive/authenticated source and timestamps for mreyes@cybersecurity.corp.",
+        "No AzureActivity/AzureResourceManager (ActivityLog) query results provided showing the exact Delete operations, timestamps, resource IDs, or Caller fields to directly map each deletion to mreyes@cybersecurity.corp.",
+        "No AuditLogs / Directory logs provided to validate the role assignment event (who performed the assignment, the Global Administrator identity, timestamp, and method of self-assignment).",
+        "No Endpoint/EDR telemetry (DeviceProcessEvents, alerts from Defender XDR) provided to establish whether actions were performed from an administrative workstation, via API, or via remote session.",
+        "No recovery/backup metadata or Recovery Services vault operation logs provided to confirm whether backups were permanently deleted (beyond soft-delete retention behavior) or if retention policies prevented permanent loss for some items.",
+        "No network logs (Azure Firewall, NSG flow logs, proxy logs) included other than a single IP entity; unable to confirm any C2 or external control channel beyond the provided IP reputation record.",
+        "No explicit request/change ticket or approval records provided to corroborate legitimate change processes \u2014 reliance on absence of change ticket noted in incident description but not independently verified."
+      ],
+      "evidence_gap_count": 7,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1078.004",
+        "T1485"
+      ],
+      "predicted_techniques": [
+        "T1078.004",
+        "T1485",
+        "T1562.008"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 0.6666666666666666,
+      "latency_s": 40.63,
+      "usage": {
+        "prompt_tokens": 2220,
+        "completion_tokens": 4382,
+        "reasoning_tokens": 2304,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Mass deletion of production resources including backups and recovery vaults by a recently-compromised identity, outside change control."
+    },
+    {
+      "id": "cl-005",
+      "category": "cloud",
+      "title": "Rapid Creation of 120 Resources Across Multiple Regions",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "SigninLogs query returned zero rows \u2014 could not independently verify the authentication event(s) for sp-terraform-ci in Azure AD sign-in logs.",
+        "No Azure Activity / Resource Management deployment audit log results were provided or queried to directly confirm the exact timestamped create/write operations and the invoking caller context.",
+        "No GitHub Actions run IDs, workflow logs, or runner IP addresses were provided to corroborate the claim that the CI runner IPs and the specific workflow executed the Terraform apply.",
+        "Cannot access the attached Terraform plan or the PR artifact from this incident payload \u2014 relying on the incident description rather than independent extraction of the plan output.",
+        "No checks performed on the service principal's credential usage history, expiration/rotation, or recent role/permission changes (no audit of sp-terraform-ci credentials).",
+        "No threat intelligence lookup results were provided for the service principal name or any resource provider endpoints involved.",
+        "No Azure Policy / change-ticket / change-management record was provided to independently verify this deployment was authorized in change control."
+      ],
+      "evidence_gap_count": 7,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1578.002"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 33.8,
+      "usage": {
+        "prompt_tokens": 2088,
+        "completion_tokens": 3681,
+        "reasoning_tokens": 2112,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Resource creation burst is a Terraform pipeline run from the CI service principal against a reviewed and merged pull request."
+    },
+    {
+      "id": "cl-006",
+      "category": "cloud",
+      "title": "Bulk Resource Deletion in Non-Production Subscription",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "SigninLogs query (SigninLogs | where TimeGenerated >= ago(24h) | summarize count(), make_set(IPAddress), make_set(Location) by UserPrincipalName) returned zero rows in the provided workspace \u2014 no interactive signin artifact was returned for ptorres (KQL returned 0 rows).",
+        "No executed AzureActivity/ActivityLog query results provided showing the specific delete operation records (operationName, timestamp, caller, correlationId) for the 88 deletions.",
+        "Change ticket artifacts (actual ticket record, attachment, approver identity, and timestamps) were not provided for independent verification.",
+        "No RBAC/privilege verification for ptorres (role assignments, scope of permission) was returned.",
+        "No backup/recovery verification (snapshots, Recovery Services Vault deletions audit) was provided to confirm restorability if needed.",
+        "No correlation to Resource Graph or ResourceProvider logs included to validate that the exact resource IDs deleted match the change ticket list."
+      ],
+      "evidence_gap_count": 6,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1485"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 30.06,
+      "usage": {
+        "prompt_tokens": 2197,
+        "completion_tokens": 3257,
+        "reasoning_tokens": 1664,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Bulk deletion is the scheduled decommission of the retired test environment, executed under an approved change with the resource list matching the decommission plan."
+    },
+    {
+      "id": "cl-007",
+      "category": "cloud",
+      "title": "Service Identity Reading Multiple Key Vault Secrets Overnight",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 75,
+      "evidence_gaps": [
+        "Could not independently verify the claimed 14-month nightly schedule via historical Key Vault access logs (KeyVaultAuditEvents / AzureActivity) \u2014 need query of Key Vault diagnostic logs / AzureActivity for 14 months.",
+        "Could not retrieve Key Vault diagnostic logs (KeyVaultAuditEvents or AzureDiagnostics) to confirm exact event timestamps, caller IPs, and principal types for each of the 18 secret reads.",
+        "Unable to validate the access policy content in kv-prod-backup (confirming that only those 18 secrets are granted) from available data in this incident.",
+        "Could not query the Function App (backup automation account) execution logs or Managed Identity token usage to confirm the process tree and caller App Service principal for the 02:00 run.",
+        "SigninLogs query returned zero rows (no interactive sign-in evidence) \u2014 this is an absent corroboration for the identity; further checks against ManagedIdentity traces and KeyVault diagnostics are needed.",
+        "No threat intelligence enrichment available for the managed identity or the Key Vault operations in the provided payload (threat_intel empty).",
+        "No network egress / destination IP telemetry provided for the function app run; cannot validate whether secrets were exfiltrated or transmitted outside expected endpoints.",
+        "No runbook / change control ticket or owner confirmation for the backup orchestration process available in the incident payload."
+      ],
+      "evidence_gap_count": 8,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1552.001"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 29.47,
+      "usage": {
+        "prompt_tokens": 2130,
+        "completion_tokens": 3181,
+        "reasoning_tokens": 1472,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Key Vault reads are the backup service's documented nightly job, matching its long-standing schedule, scope and source."
+    },
+    {
+      "id": "cl-008",
+      "category": "cloud",
+      "title": "Diagnostic Logging Disabled on Production Storage Account",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 75,
+      "evidence_gaps": [
+        "SigninLogs KQL executed (SigninLogs | where TimeGenerated >= ago(24h) | summarize count(), make_set(IPAddress), make_set(Location) by UserPrincipalName) returned zero rows; could not verify recent interactive sign-in for swalsh@cybersecurity.corp \u2014 further sign-in logs search required.",
+        "No AzureActivity / ActivityLogs query results provided showing the exact management operation (Delete of microsoft.insights/diagnosticSettings), caller, callerIP, or time-of-change \u2014 need Activity log entry to confirm actor and originating IP.",
+        "No Azure AD AuditLogs (Change or Role assignment) verification to confirm if the action was performed via delegated admin, service principal, or interactive user.",
+        "No change ticket or CMDB / change management record could be verified programmatically; reliance on incident description that no ticket exists.",
+        "No evidence was provided showing whether the diagnostic settings were re-enabled or if backups of logs exist prior to removal.",
+        "No SIEM/Network egress telemetry was reviewed for attempted exfiltration around the time of change.",
+        "No endpoint/process telemetry (e.g., Defender for Endpoint DeviceProcessEvents) was provided to show local actions taken by the user that may indicate malicious tool use.",
+        "No threat intelligence lookups for the user or any related IPs were supplied (caller IP unknown), so reputation checks could not be completed."
+      ],
+      "evidence_gap_count": 8,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [
+        "T1562.008"
+      ],
+      "predicted_techniques": [
+        "T1562.008"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 30.88,
+      "usage": {
+        "prompt_tokens": 2117,
+        "completion_tokens": 3266,
+        "reasoning_tokens": 1664,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Diagnostic logging disabled on a production resource without a ticket. Could be cost work or anti-forensics - no other indicators either way."
+    },
+    {
+      "id": "cl-009",
+      "category": "cloud",
+      "title": "Contributor Role Assigned at Subscription Scope",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 65,
+      "evidence_gaps": [
+        "No AzureActivity / ControlPlane audit log for the role assignment was provided or queried (RoleAssignmentCreate / Microsoft.Authorization/roleAssignments write record missing).",
+        "No AAD AuditLogs / PrivilegedIdentityManagement audit records were provided to confirm who performed the assignment (Global Administrator identity not independently verified).",
+        "SigninLogs KQL query returned zero rows for the last 24h (SigninLogs | where TimeGenerated >= ago(24h) | summarize ... returned 0 rows) \u2014 unable to corroborate sign-in source IP, MFA status, or whether the Global Admin account was active at the time.",
+        "Contents of the referenced Teams message thread were not provided for review; cannot verify the context or approval language.",
+        "No change ticket, formal approval record, or scheduled task record was provided to justify the assignment.",
+        "No PIM activation logs were checked to determine if a just-in-time elevation occurred instead of a permanent assignment.",
+        "No evidence whether the role assignment was performed via portal, PowerShell (Azure CLI), REST API, or automation runbook \u2014 method not observed.",
+        "No checks performed against threat intelligence for the Global Admin account or assignee (ychen) for prior compromise indicators.",
+        "No verification of whether the assignment included any custom role modifications or privilege boundaries; exact roleAssignmentId and timestamp not available."
+      ],
+      "evidence_gap_count": 9,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [
+        "T1098.003"
+      ],
+      "predicted_techniques": [
+        "T1098.003"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 32.23,
+      "usage": {
+        "prompt_tokens": 2087,
+        "completion_tokens": 3303,
+        "reasoning_tokens": 1600,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Broad role assignment at subscription scope with a plausible but unverified justification. Needs manager confirmation rather than an autonomous call."
+    },
+    {
+      "id": "cl-010",
+      "category": "cloud",
+      "title": "Network Security Group Rules Modified Across Multiple Subnets",
+      "expected": "BENIGN",
+      "predicted": "FALSE_POSITIVE",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "I could not independently verify the AzureActivity / ResourceChange entries showing the exact operation(s) performed (no AzureActivity / ResourceLogs query results were provided).",
+        "No Azure Resource Graph or Activity Log query was executed here to show the exact timestamped operations, subscription/resource IDs, or the full before/after NSG rule delta for each subnet.",
+        "SigninLogs query returned zero rows; therefore I cannot corroborate an interactive user context for the managed identity from SigninLogs (managed identities may not appear in SigninLogs).",
+        "No Defender for Cloud remediation job run history or Azure Policy remediation job logs were provided to independently validate schedule and scope.",
+        "No threat intelligence enrichment was available for the managed identity (threat_intel object empty).",
+        "No change ticket or approval record accessible to confirm this remediation was scheduled and authorized by change management (outside of the incident description)."
+      ],
+      "evidence_gap_count": 6,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 49.31,
+      "usage": {
+        "prompt_tokens": 2064,
+        "completion_tokens": 3212,
+        "reasoning_tokens": 1920,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Network security group change alert triggered by an automated policy remediation task doing exactly what it was designed to do."
+    },
+    {
+      "id": "eval-001",
+      "category": "core",
+      "title": "Suspicious PowerShell Invocations with Encoded Arguments from Word Process",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "DeviceProcessEvents KQL query against workspace law-soc-agent returned 0 rows; no Sentinel/Log Analytics corroboration of the Defender alert process telemetry (no PID, no full process tree from LA).",
+        "SigninLogs query against law-soc-agent returned 0 rows for the last 24h; could not corroborate recent interactive logins or suspicious authentications for jdoe@cybersecurity.corp.",
+        "No process PID, parent-child chain timestamps, or file hashes available in the incident artifacts (PIDs and file SHA256 missing).",
+        "No network egress logs (proxy/Firewall/NetworkWG/Cloud) accessible here to confirm connection details (port, bytes transferred, TLS server name) to 45.148.10.12 from WKS-FIN-094.",
+        "No mailbox/attachment artifacts or the originating Word document available to confirm macro-enabled document or phishing vector.",
+        "No full decoded PowerShell payload beyond the supplied snippet was available in the incident; further decoding of the complete Base64 string and subsequent file/registry I/O telemetry could not be performed here."
+      ],
+      "evidence_gap_count": 6,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1027",
+        "T1059.001",
+        "T1566.001"
+      ],
+      "predicted_techniques": [
+        "T1027",
+        "T1059.001"
+      ],
+      "technique_recall": 0.6666666666666666,
+      "technique_precision": 1.0,
+      "latency_s": 35.58,
+      "usage": {
+        "prompt_tokens": 2890,
+        "completion_tokens": 3414,
+        "reasoning_tokens": 1600,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Office process spawning hidden encoded PowerShell with egress to a high-reputation-risk IP is textbook macro-borne execution."
+    },
+    {
+      "id": "eval-002",
+      "category": "core",
+      "title": "Impossible Travel and Risky Sign-in from Tor Exit Node",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 75,
+      "evidence_gaps": [
+        "SigninLogs query against workspace law-soc-agent (SigninLogs | where TimeGenerated >= ago(24h) ...) returned zero rows in the provided live query result \u2014 no raw sign-in record available for independent verification.",
+        "No raw Entra SigninLogs record (JSON) provided to enumerate authentication details (application, client IP, deviceDetail, authenticationMethods, conditionalAccessStatus, MFA detail).",
+        "Could not access or verify Conditional Access/MFA transaction details (which MFA method was used, device ID, push approval metadata, authentication time stamps) \u2014 reliance on incident description.",
+        "Unable to review Azure AD audit logs or refresh tokens/session tokens (no data provided) to confirm session lifetime or active sessions revocation.",
+        "No endpoint (host) telemetry provided (no device name, no DeviceInfo) to determine whether the originating endpoints are managed corporate devices or unknown endpoints.",
+        "VPN gateway and corporate network logs were not available for independent confirmation of 'no active session'."
+      ],
+      "evidence_gap_count": 6,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1078.004",
+        "T1550.01"
+      ],
+      "predicted_techniques": [
+        "T1078.004",
+        "T1090.004"
+      ],
+      "technique_recall": 0.5,
+      "technique_precision": 0.5,
+      "latency_s": 43.36,
+      "usage": {
+        "prompt_tokens": 2312,
+        "completion_tokens": 4280,
+        "reasoning_tokens": 2432,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Successful auth from a Tor exit node 15 minutes after a domestic login, with no VPN record, is account compromise."
+    },
+    {
+      "id": "eval-003",
+      "category": "core",
+      "title": "Mass File Encryption Activity with Shadow Copy Deletion",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "No device/process telemetry rows returned from executed DeviceProcessEvents KQL query (DeviceProcessEvents query returned 0 rows) \u2014 cannot independently confirm process creation timestamps, parent process, or PID.",
+        "SigninLogs query returned 0 rows for the last 24h \u2014 cannot validate recent logons, authentication source IPs, or whether svc_backup@cybersecurity.corp was used to perform actions.",
+        "No file hashes, file creation/modification timestamps, or sample artifacts were provided for encrypted files (prevents malware family confirmation or hash IOC enrichment).",
+        "No network telemetry or egress/C2 information provided (no destination IPs, ports, or proxy logs to confirm exfiltration or C2).",
+        "Threat intelligence lookups for .lockbit, file hashes, or known LockBit indicators were not provided / returned no results in the incident payload.",
+        "No specific backup agent service name, service stop event IDs, or service-related Event Log entries were provided to corroborate service stop activity.",
+        "No host forensic images, MDE raw telemetry, or triage console output available for deeper root-cause (prevents full process tree reconstruction)."
+      ],
+      "evidence_gap_count": 7,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1486",
+        "T1490"
+      ],
+      "predicted_techniques": [
+        "T1486",
+        "T1489",
+        "T1490"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 0.6666666666666666,
+      "latency_s": 37.16,
+      "usage": {
+        "prompt_tokens": 2692,
+        "completion_tokens": 4209,
+        "reasoning_tokens": 2368,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Mass file rename with shadow copy deletion is ransomware detonation."
+    },
+    {
+      "id": "eval-004",
+      "category": "core",
+      "title": "Kerberoasting - Anomalous Service Ticket Requests with RC4 Encryption",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "No Domain Controller security event logs (e.g., Windows Event ID 4769) were ingested or available in the workspace to enumerate exact SPNs requested, ticket hashes, timestamps, and source IPs on the DCs.",
+        "No Kerberos TGS request details (SPN list, service account names targeted) were provided by DfI alert payload in this incident record.",
+        "DeviceProcessEvents query returned zero rows \u2014 no process lineage or command line evidence from WKS-MKT-221 available in this workspace to show what initiated the requests.",
+        "SigninLogs query returned zero rows \u2014 could not corroborate interactive logons or recent authentications for rpatel@cybersecurity.corp from this workspace.",
+        "No network egress / DNS / proxy logs were available in the provided data to check for C2 or exfiltration related to this host.",
+        "Threat intelligence enrichment for any SPNs, service accounts, or destination IPs was not available in the incident payload (threat_intel empty).",
+        "No list of scheduled scans, maintenance windows, or authorized security tools on WKS-MKT-221 was provided to fully eliminate benign causes, despite the incident note saying 'No vulnerability scan scheduled'."
+      ],
+      "evidence_gap_count": 7,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1078",
+        "T1558.003"
+      ],
+      "predicted_techniques": [
+        "T1558.003"
+      ],
+      "technique_recall": 0.5,
+      "technique_precision": 1.0,
+      "latency_s": 32.28,
+      "usage": {
+        "prompt_tokens": 2682,
+        "completion_tokens": 3468,
+        "reasoning_tokens": 1792,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Bulk Kerberos service ticket requests with RC4 downgrade from a workstation is kerberoasting."
+    },
+    {
+      "id": "eval-005",
+      "category": "core",
+      "title": "Bulk SharePoint Download Followed by Personal Cloud Storage Upload",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "SigninLogs KQL query returned zero rows \u2014 could not corroborate specific authentication events, IPs, MFA status, or session timestamps for kwilson@cybersecurity.corp within the workspace.",
+        "DeviceProcessEvents KQL query returned zero rows \u2014 no process-level telemetry available to confirm which process (browser, OneDrive, CLI, third-party app) performed downloads/uploads or to capture exact command-lines/parent processes.",
+        "No SharePoint audit log extracts or file metadata (file names, file types, sensitivity labels) were provided in the incident payload to determine exact content exfiltrated.",
+        "No Cloud App Audit (DCA/MCAS) export/logs included beyond the single alert summary; cannot confirm the Dropbox account identifier (email) or OAuth session token used for upload from logs available here.",
+        "Lack of network flow logs (proxy/forwarder/endpoint network telemetry) tying LAP-ENG-330 to outbound connections to 162.125.248.1 at the time of upload in this workspace.",
+        "No timeline timestamps for the download and upload events in the provided data to prove the exact sequencing and overlap.",
+        "Unable to validate whether the activity was sanctioned by any business process (e.g., data migration request) because change/approval tickets were not provided."
+      ],
+      "evidence_gap_count": 7,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1530",
+        "T1567.002"
+      ],
+      "predicted_techniques": [
+        "T1530",
+        "T1567.002"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 36.99,
+      "usage": {
+        "prompt_tokens": 2816,
+        "completion_tokens": 3205,
+        "reasoning_tokens": 1408,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Large-volume download from SharePoint followed by upload to personal cloud storage by a departing employee is exfiltration."
+    },
+    {
+      "id": "eval-006",
+      "category": "core",
+      "title": "Port Scanning and Vulnerability Probing Against DMZ Web Application",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 75,
+      "evidence_gaps": [
+        "Could not independently verify the existence or time window of change ticket CHG-2026-0914 in the change management system (relies on incident text).",
+        "Could not validate CMDB registration for NESSUS-SCAN-01 outside the incident text (no direct asset-inventory/API check performed).",
+        "SigninLogs query returned zero rows \u2014 absence of sign-in records in that workspace is an evidence gap (cannot confirm svc_vulnscan@cybersecurity.corp actually authenticated around the alerts).",
+        "DeviceProcessEvents query returned zero rows \u2014 no EDR process evidence to confirm scanner process activity on the host in this workspace.",
+        "No firewall, network flow (e.g., AzureNetworkAnalytics or DeviceNetworkEvents) or IDS logs were provided to correlate scan source/destination IPs, timestamps, and ports beyond the single alert.",
+        "Per-alert timestamps, list of the 40 DMZ targets, and whether the scan timeframe exactly matches CHG-2026-0914 were not available \u2014 could not confirm temporal alignment.",
+        "No post-scan telemetry (authentication anomalies, lateral movement alerts, or exploitation alerts) was provided to rule out follow-on malicious activity.",
+        "No access to the change approval records or signed authorisation artifact to independently confirm the approval.",
+        "Workspace queries ran against workspace law-soc-agent only; coverage of network devices or the DMZ host workspace is unknown."
+      ],
+      "evidence_gap_count": 9,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1046"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 30.04,
+      "usage": {
+        "prompt_tokens": 2827,
+        "completion_tokens": 3270,
+        "reasoning_tokens": 1600,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Source IP is the documented Nessus scanner in the asset inventory, running an approved scan window with a change ticket."
+    },
+    {
+      "id": "eval-007",
+      "category": "core",
+      "title": "Encoded PowerShell Execution Across Multiple Servers",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "BENIGN",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "SigninLogs query returned zero rows (SigninLogs | where TimeGenerated >= ago(24h) | summarize ...) \u2014 could not independently verify interactive/authentication events for svc_sccm or JMP-SCCM-02.",
+        "DeviceProcessEvents query returned zero rows for the sample query provided \u2014 could not independently confirm process creation telemetry (InitiatingProcess fields) for endpoints beyond the incident assertion.",
+        "Could not query SCCM/ConfigMgr job/task history from the SCCM server to confirm the deployment job that initiated the 47 executions.",
+        "Change ticket CHG-2026-1102 was referenced in the incident but change management system access was not available to independently validate scope/time/approver details.",
+        "No external threat intelligence enrichment information was provided for JMP-SCCM-02, svc_sccm account, or any endpoint hostnames/IPs; threat-intel section is empty.",
+        "Host-level details (the list of 47 server hostnames or process IDs) were not provided in incident entities, preventing per-host verification and scope confirmation."
+      ],
+      "evidence_gap_count": 6,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1059.001"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 37.03,
+      "usage": {
+        "prompt_tokens": 2764,
+        "completion_tokens": 4158,
+        "reasoning_tokens": 2496,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Encoded PowerShell originates from the documented SCCM jump box under an approved change window, executed by a platform engineering service account."
+    },
+    {
+      "id": "eval-008",
+      "category": "core",
+      "title": "Impossible Travel Alert - Sign-in from Two Countries",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "SigninLogs KQL returned zero rows so I could not independently verify the raw Entra sign-in events (timestamps, deviceIDs, token issuance) for asharma@cybersecurity.corp.",
+        "No VPN gateway/session logs were available to confirm that 20.86.44.19 was the egress IP used by the user's split-tunnel VPN session at 09:31.",
+        "Could not independently verify device ID / Intune compliance telemetry beyond the incident narrative (Device compliance logs from Intune not queried).",
+        "No Conditional Access or Token Issuance logs were queried (to confirm whether refresh/access tokens were reissued or reused).",
+        "No endpoint process or network telemetry for LAP-SALES-118 was returned (DeviceProcessEvents query returned 0 rows); no child-process or lateral movement artifacts available to inspect."
+      ],
+      "evidence_gap_count": 5,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1078"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 33.65,
+      "usage": {
+        "prompt_tokens": 2819,
+        "completion_tokens": 3145,
+        "reasoning_tokens": 1728,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Geographic anomaly is fully explained by the corporate VPN egress gateway; device is compliant and the session is continuous."
+    },
+    {
+      "id": "eval-009",
+      "category": "core",
+      "title": "Credential Dumping Tooling Detected on Domain Controller",
+      "expected": "BENIGN",
+      "predicted": "BENIGN",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 75,
+      "evidence_gaps": [
+        "No raw Defender for Endpoint alert artifacts (process command line, process parent, PID, process SHA256, or process creation time) were available in the provided data to confirm exact tool/process used.",
+        "SigninLogs query returned zero rows \u2014 unable to confirm an interactive logon or exact authentication event for rt_operator01@cybersecurity.corp during the timeframe from the provided workspace.",
+        "DeviceProcessEvents query returned zero rows \u2014 unable to retrieve process creation events or process tree evidence from the provided workspace to validate what process performed the LSASS memory access.",
+        "Could not independently verify the signed rules-of-engagement document or the notification to the security team (information provided in incident description only).",
+        "No evidence available to confirm whether any credentials were harvested and whether they were subsequently used (no lateral authentication events provided).",
+        "No EDR artifact details (process IDs, hashes, or telemetry bytes) were supplied \u2014 prevented deeper IOC enrichment and reputation checks on a binary/hash."
+      ],
+      "evidence_gap_count": 6,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1003.001"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 32.09,
+      "usage": {
+        "prompt_tokens": 2833,
+        "completion_tokens": 2995,
+        "reasoning_tokens": 1472,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Authorized red-team engagement with signed rules of engagement. The credential dumping genuinely occurred, so this is a benign positive (real but expected activity), not a false positive (detection logic was wrong). Originally mislabeled FALSE_POSITIVE in the v1 dataset; corrected after the model's disagreement proved better-grounded in Microsoft's TruePositive/BenignPositive/FalsePositive taxonomy."
+    },
+    {
+      "id": "eval-010",
+      "category": "core",
+      "title": "Password Spray Attempts with Single Successful Authentication",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 75,
+      "evidence_gaps": [
+        "SigninLogs query executed against workspace (law-soc-agent, id 836a173c-9b78-447c-a2a5-364eeb50f28b) returned zero rows \u2014 could not corroborate sign-in events or retrieve the specific sign-in records (gap).",
+        "No raw Azure AD SigninLogs rows provided for the timestamp window of the 142 failed attempts and the single successful primary-credential validation (unable to validate exact timestamps, app IDs, client apps, or device claims).",
+        "No MFA service logs provided that show the challenge event detail (method offered, timestamp, or failure code) for tgarcia@cybersecurity.corp.",
+        "No Conditional Access evaluation logs or policy triggers provided for impacted accounts.",
+        "No device endpoint telemetry (e.g., endpoint detection alerts, network connections from the user's device) to confirm lateral activity or local compromise.",
+        "IP geolocation/ISP details are limited \u2014 incident text states 'residential ISP in the user's home city' but cannot verify if this is the user\u2019s own IP or an attacker co-located.",
+        "No user-reported context (user travel, scheduled automated authentications, or password-reset/ticket history) available to rule out benign causes.",
+        "Threat intelligence for 203.0.113.44 is sparse and marked whitelisted/reserved; additional external feeds returned no malicious indicators (lack of conclusive negative reputation is a gap)."
+      ],
+      "evidence_gap_count": 8,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1110.003"
+      ],
+      "predicted_techniques": [
+        "T1110.003"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 29.19,
+      "usage": {
+        "prompt_tokens": 2226,
+        "completion_tokens": 3058,
+        "reasoning_tokens": 1408,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Password spray from a residential IP followed by one success, but MFA held and no post-auth activity. Genuinely ambiguous - needs human review, not an autonomous verdict."
+    },
+    {
+      "id": "eval-011",
+      "category": "core",
+      "title": "Global Administrator Role Assigned Outside Change Window",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 65,
+      "evidence_gaps": [
+        "No raw Azure AD AuditLogs / RoleManagement logs for the specific role assignment event were provided (exact audit log entry with Actor, Target, Timestamp, and ActivityType not available).",
+        "SigninLogs KQL query returned zero rows; therefore sign-in details (IP address, MFA, location, device info) for admin_klarsen and bthomas could not be corroborated from the provided data.",
+        "No PIM activation / approval logs were provided to verify whether PIM was bypassed via a legitimate exception.",
+        "No information on the method used for assignment (Azure Portal, PowerShell/Graph API, conditional access bypass) \u2014 lack of 'Operation' field from audit logs.",
+        "No evidence from change management (ticketing system) to confirm an authorized out-of-window change.",
+        "No threat intelligence enrichment or reputation data for the principals returned in the provided incident object.",
+        "No MFA, conditional access, or device compliance telemetry for the involved accounts in the provided dataset.",
+        "No timeline or sequence of related administrative actions before/after the role grant (e.g., subsequent role removals, privilege activations) were available."
+      ],
+      "evidence_gap_count": 8,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1136.003"
+      ],
+      "predicted_techniques": [
+        "T1098"
+      ],
+      "technique_recall": 0.0,
+      "technique_precision": 0.0,
+      "latency_s": 29.31,
+      "usage": {
+        "prompt_tokens": 2144,
+        "completion_tokens": 3680,
+        "reasoning_tokens": 1984,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Privileged role assignment outside change control - could be a legitimate emergency or a persistence mechanism. Insufficient evidence either way."
+    },
+    {
+      "id": "eval-012",
+      "category": "core",
+      "title": "Repeated Account Lockouts for Single User",
+      "expected": "BENIGN",
+      "predicted": "FALSE_POSITIVE",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 78,
+      "evidence_gaps": [
+        "Could not validate raw SigninLogs records for lnguyen@cybersecurity.corp because the provided SigninLogs query returned zero rows; therefore unable to confirm exact IP addresses, deviceIDs, or timestamps from log records.",
+        "No Exchange ActiveSync protocol-specific logs or mailbox access logs were returned from the workspace to independently confirm repeated failed EAS authentications.",
+        "No Intune/MDM mobile device telemetry (compliance state, last check-in, or deviceID mapping) was available to corroborate the device identity beyond the incident text.",
+        "No successful post-password-change authentication event was returned in the workspace to confirm the user subsequently re-authenticated successfully.",
+        "DeviceProcessEvents query returned zero rows; no process-level telemetry was available for the iOS device (expected for mobile devices) or for other endpoints to show malicious process activity.",
+        "No external threat intelligence lookups/results provided for the device, mailbox, or any IP addresses (no IOC enrichment available)."
+      ],
+      "evidence_gap_count": 6,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1110"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 31.04,
+      "usage": {
+        "prompt_tokens": 2677,
+        "completion_tokens": 3252,
+        "reasoning_tokens": 1792,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Account lockouts traced to a stale cached credential on the user's own phone after a password change. Real activity, no adversary."
+    },
+    {
+      "id": "ep-001",
+      "category": "endpoint",
+      "title": "Process Injection into Browser with Periodic Beaconing",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "No DeviceProcessEvents rows returned for broad queries; full process creation lineage (timestamps, parent/child PIDs, ProcessId values) for rundll32.exe and msedge.exe was not retrievable from provided KQL results.",
+        "SigninLogs query returned zero rows for the workspace (could not corroborate interactive logons, MFA events, or recent activity for eross@cybersecurity.corp).",
+        "No network flow/NSG/Firewall logs provided showing session bytes, exact connection timestamps, TLS SNI, or resolved IP->domain mapping beyond the incident description.",
+        "No WHOIS/PassiveDNS or third\u2011party reputation data for cdn-telemetry-sync.net was returned (only registration age and privacy were reported in the incident text).",
+        "No file hash (MD5/SHA1/SHA256) or on-disk artifact details for C:\\Users\\Public\\upd.dat were available from EDR telemetry.",
+        "No memory or process dump, no Sysmon/ETW evidence, and no timeline of when the injected thread first appeared (time origin unknown).",
+        "Unable to verify whether rundll32.exe binary is signed or if the observed command line is from a legitimate admin action or a scheduled task."
+      ],
+      "evidence_gap_count": 7,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1055",
+        "T1071.001"
+      ],
+      "predicted_techniques": [
+        "T1055",
+        "T1071.001"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 33.44,
+      "usage": {
+        "prompt_tokens": 2865,
+        "completion_tokens": 3343,
+        "reasoning_tokens": 1152,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Process injection into a browser followed by fixed-interval beaconing with jitter to a newly registered domain is C2 implant behaviour."
+    },
+    {
+      "id": "ep-002",
+      "category": "endpoint",
+      "title": "Scheduled Task Persistence with Masquerading Name",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "DeviceProcessEvents KQL returned zero rows for the broad query provided; no additional produced process event rows were available from that workspace run (cannot confirm process creation lineage, PIDs, or timestamps from telemetry).",
+        "SigninLogs KQL returned zero rows for last 24h query; unable to confirm interactive or lateral authentication activity for svc_app@cybersecurity.corp from SigninLogs in the provided workspace.",
+        "No collected file contents, file hash (MD5/SHA256) or samples of C:\\Users\\svc_app\\AppData\\Roaming\\u.ps1 were provided to perform static or VT/Threat Intel lookups.",
+        "No EDR live-response output (process tree with PIDs, parent-child timestamps) was available \u2014 PIDs and timestamps for schtasks.exe and its parent w3wp.exe are not present in incident data.",
+        "No outbound network connections or C2 IP/domain were observed/provided; cannot confirm exfiltration or C2 communication without additional network/DNS/Proxy logs.",
+        "Unverified context: whether svc_app@cybersecurity.corp is a sanctioned service account with delegated rights or has a scheduled task creation approval (change ticket) \u2014 this context was not available."
+      ],
+      "evidence_gap_count": 6,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1053.005",
+        "T1059.001"
+      ],
+      "predicted_techniques": [
+        "T1036.005",
+        "T1053.005",
+        "T1059.001"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 0.6666666666666666,
+      "latency_s": 32.92,
+      "usage": {
+        "prompt_tokens": 2811,
+        "completion_tokens": 3581,
+        "reasoning_tokens": 1536,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Scheduled task created under a misleading Microsoft-like name running an obfuscated script from AppData at every logon is persistence."
+    },
+    {
+      "id": "ep-003",
+      "category": "endpoint",
+      "title": "Vulnerable Signed Driver Loaded Prior to Security Sensor Termination",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 75,
+      "evidence_gaps": [
+        "No DeviceProcessEvents or DriverLoadEvents KQL results provided that explicitly show the ProcessCreationTime, parent process, process id, or parent process name for the gdrv.sys installation (i.e., who executed the drop/install).",
+        "No Service Control Manager (ServiceStop/ServiceCrash) event logs or DeviceEvents showing the Defender sensor/service termination event were returned for correlation.",
+        "No kernel/drivers-specific telemetry (e.g., DeviceDriverEvents, Sysmon driver load events, or Event ID 6xx driver load) was supplied to confirm module load details and timestamped parent process.",
+        "No file hash (MD5/SHA256) for C:\\Windows\\Temp\\gdrv.sys was provided; external reputation and VT lookups could not be completed.",
+        "No process lineage (parent process, initiating account) was retrieved to determine whether the install was performed by an admin or by an unprivileged process.",
+        "No network telemetry was provided for the 22-minute telemetry gap; no evidence of remote command & control hosts, DNS, or egress activity associated with this event is available.",
+        "No forensic snapshot, memory image, or on-disk artifact collection is recorded; absence of these prevents deeper root-cause confirmation.",
+        "The only executed KQL shown (search for WINWORD.EXE or powershell.exe) returned zero rows and is not targeted to gdrv.sys; that result is an absent corroboration and does not confirm benignity.",
+        "Unable to verify local asset inventory (hardware manufacturer data) independently beyond incident statement that server has no Gigabyte hardware.",
+        "No account activity / authentication logs were provided for accounts with elevated privileges around the event to rule out authorized administrative action."
+      ],
+      "evidence_gap_count": 10,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1068",
+        "T1562.001"
+      ],
+      "predicted_techniques": [
+        "T1068",
+        "T1562.001"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 39.51,
+      "usage": {
+        "prompt_tokens": 2564,
+        "completion_tokens": 4498,
+        "reasoning_tokens": 1984,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "A known-vulnerable signed driver loaded immediately before EDR sensor termination is bring-your-own-vulnerable-driver used to disable defences."
+    },
+    {
+      "id": "ep-004",
+      "category": "endpoint",
+      "title": "Living-off-the-Land Download and Execute via certutil",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "No DeviceProcessEvents rows returned from the provided KQL (the workspace query returned zero rows) \u2014 cannot corroborate timestamps, parent/child PIDs, or process SHA256 from telemetry.",
+        "SigninLogs query returned zero rows \u2014 cannot verify recent authentications, lateral logons, or remote sessions for nabbas@cybersecurity.corp.",
+        "No file hash (MD5/SHA256) for C:\\Users\\Public\\svc.exe available in the incident to query reputation / detonation.",
+        "No DeviceNetworkEvents / DNS / proxy logs provided showing resolution or remote IP address for paste-bin-cdn.top (destination IP and bytes transferred unknown).",
+        "No sandbox or AV verdict for the retrieved binary; threat-intel feed field was empty and external TI lookups were not returned in incident data.",
+        "No EDR live-response artifacts (memory, process dump) or exact PIDs/timestamps to perform root-cause forensic triage.",
+        "Cannot verify whether nabbas@cybersecurity.corp has any delegated administrative privileges from directory records in scope \u2014 reliance on incident narrative for role description."
+      ],
+      "evidence_gap_count": 7,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1105",
+        "T1218.011"
+      ],
+      "predicted_techniques": [
+        "T1059.003",
+        "T1087.002",
+        "T1105",
+        "T1218.011"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 0.5,
+      "latency_s": 36.36,
+      "usage": {
+        "prompt_tokens": 2791,
+        "completion_tokens": 4168,
+        "reasoning_tokens": 2048,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "LOLBin download-and-execute chain from a paste site with the payload written to a temp directory and immediately run."
+    },
+    {
+      "id": "ep-005",
+      "category": "endpoint",
+      "title": "Malware Detected on Multiple Endpoints Simultaneously",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "DeviceProcessEvents query returned 0 rows \u2014 no process creation/parent-child evidence captured for the EICAR detections in the provided results.",
+        "SigninLogs query returned 0 rows \u2014 cannot independently verify recent activity of svc_secops@cybersecurity.corp from the supplied query output.",
+        "No software distribution tool/server hostname provided in the incident to validate package origin or management server logs.",
+        "No DeviceFileEvents / AlertEvidence / Defender for Endpoint telemetry exported here to show file path, MD5/SHA256 of the detected EICAR files, or whether files were executed or only detected on download.",
+        "No change ticket or deployment job log content included (SEC-TEST-2026-09 documentation not attached), so independent confirmation of authorization and timing is incomplete.",
+        "No external threat-intel lookup results provided for any observed hashes or endpoint IPs (threat_intel object empty).",
+        "No network telemetry (egress IPs, C2 indicators) included in supplied results to confirm absence of malicious communication."
+      ],
+      "evidence_gap_count": 7,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1204.002"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 27.54,
+      "usage": {
+        "prompt_tokens": 2702,
+        "completion_tokens": 2998,
+        "reasoning_tokens": 1536,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "EICAR test file deployed by the security team as a documented detection-validation exercise."
+    },
+    {
+      "id": "ep-006",
+      "category": "endpoint",
+      "title": "PsExec Remote Execution Across 60 Workstations",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "BENIGN",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "DeviceProcessEvents query returned zero rows from the configured workspace \u2014 cannot independently validate PsExec process creation events on targets or JMP-ITOPS-01 via this query.",
+        "SigninLogs query returned zero rows \u2014 cannot confirm recent authentications or interactive logons for svc_deploy@cybersecurity.corp from the workspace queried.",
+        "No direct access to change ticket CHG-2026-1203 in the ticketing system to validate approver, exact device list, or scheduled window.",
+        "No collected file hash or installation verification (msiexec/success events) for \\\\repo\\sw\\AcroRdr_2026.msi; cannot confirm binary integrity or vendor-signed status.",
+        "No network/file-server telemetry (SMB/NTLM/SMB session details) for the internal repository host (\\\\repo) was provided or queried \u2014 cannot confirm legitimate repository usage.",
+        "Threat intelligence lookups for the internal repository host and the MSI binary were not available in the incident (threat_intel empty).",
+        "List of specific target workstation hostnames and any post-installation failures or anomalies not provided in incident artifacts."
+      ],
+      "evidence_gap_count": 7,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1569.002"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 25.48,
+      "usage": {
+        "prompt_tokens": 2777,
+        "completion_tokens": 2960,
+        "reasoning_tokens": 1344,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "PsExec lateral execution is the documented software deployment tool run by IT operations under an approved change."
+    },
+    {
+      "id": "ep-007",
+      "category": "endpoint",
+      "title": "Unsigned Binary Execution from User Directory",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "DeviceProcessEvents query for the specific process (PaymentService.exe) and process creation details returned zero rows from the workspace; no Defender process creation telemetry was received or available to independently verify timestamp, parent process, PID, or signer status.",
+        "No DeviceNetworkEvents/NetworkCommunication logs available from the workspace to confirm all network endpoints and ports used beyond the incident statement (localhost only claim uncorroborated by network logs).",
+        "No file hash (MD5/SHA256) or file signature metadata in telemetry was provided; reputation lookup (VirusTotal/Threat Intel) for the exact binary was not available.",
+        "No EDR alert record or justification artifact was attached (e.g., Defender alert ID, quarantine action, or exclusion configuration record) \u2014 the existence of a documented EDR exclusion is asserted in the incident but not verifiable from logs here.",
+        "SigninLogs query returned zero rows; could not independently verify recent interactive logon/login time to correlate build timestamp to the logged-on user.",
+        "No build system/server logs or Git commit metadata were provided to fully confirm this binary was produced by the developer's legitimate build.",
+        "No file system timeline (creation/modification times) from Windows event logs (Sysmon or Platform logs) was available to prove the stated 40-second delta between build and execution."
+      ],
+      "evidence_gap_count": 7,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1204.002"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 28.32,
+      "usage": {
+        "prompt_tokens": 2772,
+        "completion_tokens": 3211,
+        "reasoning_tokens": 1600,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Unsigned binary execution from a developer's build output directory on a machine in the developer workstation group - expected behaviour for this role."
+    },
+    {
+      "id": "ep-008",
+      "category": "endpoint",
+      "title": "Registry Run Key Modification Across Fleet",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "No Intune audit log query results provided to independently verify the Intune deployment ID, timestamp, and targeted group membership for CHG-2026-1210 (change ticket reconciliation with change management not performed).",
+        "No per-endpoint registry value names, timestamps, or registry key paths (HKLM/HKCU) included in telemetry \u2014 only aggregate alert counts were provided.",
+        "DeviceProcessEvents query returned zero rows (absence of corroborating process-creation telemetry for suspicious parent processes is an uncorroborated negative); additional KQL queries against DeviceRegistryEvents and DeviceProcessEvents across affected device IDs were not executed here.",
+        "Threat intelligence lookups for the specific binary hash and vendor signing certificate were not available in the incident payload (incident description states a hash and certificate match, but feeds were not queried programmatically).",
+        "No network egress/C2 telemetry provided for the agent.exe runs (no DeviceNetworkEvents or firewall logs included).",
+        "Change ticket CHG-2026-1210 could not be validated against the change-management system or service desk records from this analysis context."
+      ],
+      "evidence_gap_count": 6,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1547.001"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 33.06,
+      "usage": {
+        "prompt_tokens": 2558,
+        "completion_tokens": 3453,
+        "reasoning_tokens": 1984,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Registry run-key additions are the documented endpoint agent rollout from the management server under change control."
+    },
+    {
+      "id": "ep-009",
+      "category": "endpoint",
+      "title": "Remote Access Tool Installed on Workstation",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 75,
+      "evidence_gaps": [
+        "DeviceProcessEvents query returned zero rows \u2014 no EDR process creation records were retrieved for the host; lack of process telemetry prevents confirming AnyDesk process name, PID, command-line, and parent process.",
+        "SigninLogs query returned zero rows \u2014 no Azure AD authentication events retrieved for the user in the queried workspace/time window.",
+        "No AnyDesk client or service logs (local on WKS-FIN-220) have been collected or reviewed.",
+        "No firewall, proxy, or network flow logs have been searched/returned to confirm connection characteristics (ports, bytes transferred, TLS metadata) for 82.44.19.77.",
+        "Unable to confirm whether a helpdesk ticket/approved remote support existed (incident notes say none, but system ticketing verification not performed).",
+        "User interview/contact with dpatel@cybersecurity.corp not completed to confirm whether this was authorized self-support or third-party support.",
+        "No inventory/asset management confirmation that a legacy local-admin exception for this user is still valid beyond the incident note."
+      ],
+      "evidence_gap_count": 7,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [
+        "T1219"
+      ],
+      "predicted_techniques": [
+        "T1219"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 33.15,
+      "usage": {
+        "prompt_tokens": 2826,
+        "completion_tokens": 3658,
+        "reasoning_tokens": 2112,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Remote access tool installed without a ticket. Could be shadow IT or an attacker's remote access - the incident provides no evidence to distinguish."
+    },
+    {
+      "id": "ep-010",
+      "category": "endpoint",
+      "title": "Obfuscated Script File Written to Temp Directory",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 60,
+      "evidence_gaps": [
+        "No file sample, hash (MD5/SHA1/SHA256) or content was provided for static or dynamic analysis and threat intelligence lookups.",
+        "Creating/writing process attribution is missing because relevant process telemetry has aged out (no ProcessCreation/InitiatingProcess records available).",
+        "KQL DeviceProcessEvents query returned zero rows; absence of results is a gap (cannot verify initiating process or parent process).",
+        "No scheduled task / Windows event log records provided to corroborate the claimed removal (file deletion event not present in supplied telemetry).",
+        "No Defender for Endpoint file artifact (on-disk sample or quarantine record) available to retrieve or submit to TI sandboxes.",
+        "No environment-wide search results shown for similar obfuscated scripts (no cross-host indicators checked).",
+        "No network telemetry available to check for any delayed or out-of-band C2 connections from SRV-PRINT-02.",
+        "No application logs from the legacy print management suite to confirm whether it generated this script or whether this is anomalous behavior."
+      ],
+      "evidence_gap_count": 8,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [
+        "T1027"
+      ],
+      "predicted_techniques": [
+        "T1027"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 30.21,
+      "usage": {
+        "prompt_tokens": 2523,
+        "completion_tokens": 2982,
+        "reasoning_tokens": 1408,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Obfuscated script in a temp directory with no execution evidence and no network activity - needs analysis before a verdict can be reached."
+    },
+    {
+      "id": "ep-011",
+      "category": "endpoint",
+      "title": "Unusual Child Process Spawned by Line-of-Business Application",
+      "expected": "BENIGN",
+      "predicted": "FALSE_POSITIVE",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "Only one KQL query was executed in the record and it returned zero rows: DeviceProcessEvents | where InitiatingProcessFileName =~ 'WINWORD.EXE' or FileName =~ 'powershell.exe' | take 5 \u2014 this query is unrelated to 'werfault.exe' and does not corroborate the ERP-triggered crash across endpoints.",
+        "No executed KQL results returned for DeviceProcessEvents filtered on FileName == 'werfault.exe' (needed to validate process creation timestamps, parent process, ProcessId, and the set of affected hosts).",
+        "No DeviceNetworkEvents queries were executed/returned to independently verify there was truly no network egress from the involved processes at the time of the crashes.",
+        "No FileCreation or FileWrite events were provided to confirm crash dump path and filenames or to verify that writes were limited to expected dump locations.",
+        "No EDR process tree exports or parent-process details in logs were provided to confirm that the ERP client (exact executable name) was the initiating process on each host.",
+        "No Application or System Event Log entries (Windows Error Reporting events, Event ID correlates) were provided to corroborate cause and timestamps.",
+        "No vendor support case identifier, timelines, or hotfix version/evidence were provided in the incident record to independently validate remediation status.",
+        "No file/PE signature or hash checks of werfault.exe were provided (to confirm it is a legitimate Microsoft binary) though werfault.exe is normally signed by Microsoft.",
+        "No evidence provided that AV/EDR scans were run post-dump to rule out co-occurring malicious artifacts."
+      ],
+      "evidence_gap_count": 9,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 34.19,
+      "usage": {
+        "prompt_tokens": 2532,
+        "completion_tokens": 4234,
+        "reasoning_tokens": 2496,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Crash-handler process spawning behaviour from a known-buggy application version. Real detection, real activity, no adversary and no security relevance."
+    },
+    {
+      "id": "id-001",
+      "category": "identity",
+      "title": "Illicit OAuth Consent Grant to Unverified Application",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 75,
+      "evidence_gaps": [
+        "SigninLogs query (SigninLogs | where TimeGenerated >= ago(24h) | summarize count(), make_set(IPAddress), make_set(Location) by UserPrincipalName) returned zero rows in the provided workspace: no sign-in corroboration for the user in the last 24h in that workspace.",
+        "No executed KQL results provided for AzureAD AuditLogs / AuditLogs where ActivityDisplayName contains 'Consent' or 'Add servicePrincipal' to confirm the exact time, ApplicationId, servicePrincipal objectId, or who performed the grant.",
+        "No executed query results for AADServicePrincipalSignInLogs / SigninLogs filtered by AppId/Application to show token issuance or app sign-ins.",
+        "No executed Office365 audit (UnifiedAuditLog / ExchangeMailboxAudit) or SharePoint/OneDrive audit queries provided to demonstrate actual mailbox/file access by the application after consent.",
+        "No evidence provided about whether pmorris@cybersecurity.corp is an admin or has privileged roles (cannot determine if admin consent was possible), and no organisational policy context (are users allowed to consent to apps?).",
+        "No details provided for the application object: Application (client) ID, ServicePrincipalId, publisher display name or verified publisher status from the tenant, or the redirect URL used in the malicious link.",
+        "No token revocation / refresh token activity checks were executed (unable to confirm whether offline_access (refresh token) was issued and used).",
+        "No related mailbox or file exfiltration telemetry (DLP, Data Exfiltration alerts) was provided or queried."
+      ],
+      "evidence_gap_count": 8,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1528",
+        "T1566.002"
+      ],
+      "predicted_techniques": [
+        "T1078"
+      ],
+      "technique_recall": 0.0,
+      "technique_precision": 0.0,
+      "latency_s": 39.5,
+      "usage": {
+        "prompt_tokens": 2180,
+        "completion_tokens": 4668,
+        "reasoning_tokens": 2688,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Consent granted to an unverified third-party app requesting Mail.ReadWrite and offline_access, delivered by phishing link. Classic OAuth consent grant attack."
+    },
+    {
+      "id": "id-002",
+      "category": "identity",
+      "title": "MFA Fatigue - Repeated Push Notifications Followed by Approval",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 75,
+      "evidence_gaps": [
+        "SigninLogs query executed against workspace 'law-soc-agent' returned zero rows for the summarized query \u2014 cannot independently verify the sign-in event from that query output.",
+        "No Exchange/Office 365 audit log query results provided to confirm the mailbox rule creation (Audit/OfficeActivity/ExchangeMailboxAudit not yet queried).",
+        "No Azure AD AuditLogs (or MFA/Authentication detail) query results provided to show the MFA challenge/approval artifacts (e.g., RequestId, Authentication Methods, DeviceDetail, Conditional Access result).",
+        "No mailbox content or mail trace reviewed to confirm whether messages were forwarded or exfiltrated to the external address.",
+        "No session/token revocation or risky sign-in details (device, user agent, refresh token usage) available for verification.",
+        "No EDR/endpoint telemetry reviewed for potential compromise on the user's device.",
+        "The external forwarding address (recipient) reputation and ownership have not been resolved.",
+        "No tenant Conditional Access or user risk remediation state was checked.",
+        "No firewall/proxy or mail gateway outbound logs checked for traffic to/from 91.219.238.12 or for forwarded messages."
+      ],
+      "evidence_gap_count": 9,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1078",
+        "T1621"
+      ],
+      "predicted_techniques": [
+        "T1078",
+        "T1114.003",
+        "T1621"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 0.6666666666666666,
+      "latency_s": 39.42,
+      "usage": {
+        "prompt_tokens": 2224,
+        "completion_tokens": 4510,
+        "reasoning_tokens": 2432,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "38 MFA push notifications in 12 minutes followed by an approval and immediate mailbox rule creation is MFA fatigue leading to successful compromise."
+    },
+    {
+      "id": "id-003",
+      "category": "identity",
+      "title": "Session Token Replay from Divergent Device Fingerprint",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "SigninLogs query (SigninLogs | where TimeGenerated >= ago(24h) | summarize count(), make_set(IPAddress), make_set(Location) by UserPrincipalName) returned zero rows; unable to corroborate the specific SigninLogs event(s) for svaidya@cybersecurity.corp in this workspace.",
+        "No executed query results available for AADTokenIssuanceLogs / RefreshTokens to confirm token issuance and refresh events for the presented token.",
+        "ConditionalAccessEvents, AuditLogs (UserSignInSessions, RevokeSessions) and IdentityProtection detailed events were not retrieved \u2014 these could show session revocation, risk events, or token refresh behavior.",
+        "No web-proxy / firewall logs were provided to directly confirm HTTP(S) access to the lookalike domain login.microsftonline-auth.com from the victim or the attacker IP.",
+        "No MFA/AuthenticationDetails or deviceDetail records were returned to validate the 'different browser fingerprint' artifact beyond the alert narrative.",
+        "No endpoint telemetry (hostnames, process trees, or EDR alerts) for the user device(s) were provided to confirm local compromise or lateral movement.",
+        "Bytes transferred, ports, and further network flow metadata for communications to 165.227.88.14 are not available in the incident package."
+      ],
+      "evidence_gap_count": 7,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1550.001",
+        "T1557"
+      ],
+      "predicted_techniques": [
+        "T1550.001",
+        "T1566.002"
+      ],
+      "technique_recall": 0.5,
+      "technique_precision": 0.5,
+      "latency_s": 40.18,
+      "usage": {
+        "prompt_tokens": 2212,
+        "completion_tokens": 4440,
+        "reasoning_tokens": 2368,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Session token replayed from a different ASN and device fingerprint minutes after issuance, with no corresponding authentication - adversary-in-the-middle token theft."
+    },
+    {
+      "id": "id-004",
+      "category": "identity",
+      "title": "Credential Added to Privileged Service Principal",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "Azure AD AuditLogs entry for the service principal secret creation (detailed timestamp, ipAddress, appId/objectId) not provided \u2014 cannot independently verify full audit record in Log Analytics.",
+        "SigninLogs KQL query included in incident returned zero rows (SigninLogs | where TimeGenerated >= ago(24h) ... produced no results) \u2014 token issuance / application authentication event for the SP or the client credential grant was not retrievable from provided KQL output.",
+        "No Azure AD 'Token Issuance' or 'ApplicationSignIn' logs were provided to directly show client credential (app-only) token requests and payloads.",
+        "No device or endpoint telemetry (DeviceProcessEvents, Microsoft Defender for Endpoint) for tnelson's workstation was provided to confirm if the account was used interactively or via a compromised host.",
+        "No change management ticket or authorized approval record was provided to rule out legitimate automation or scheduled/service account changes.",
+        "No audit record proving whether tnelson was explicitly delegated permission to manage this SP (incident states he is not an owner/member but that could require confirmation from tenant admin records)."
+      ],
+      "evidence_gap_count": 6,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1078.004",
+        "T1098.001"
+      ],
+      "predicted_techniques": [
+        "T1078",
+        "T1098.001"
+      ],
+      "technique_recall": 0.5,
+      "technique_precision": 0.5,
+      "latency_s": 35.17,
+      "usage": {
+        "prompt_tokens": 2217,
+        "completion_tokens": 3649,
+        "reasoning_tokens": 1920,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "A new client secret was added to a privileged service principal by a non-admin account outside change control, then immediately used from an external IP."
+    },
+    {
+      "id": "id-005",
+      "category": "identity",
+      "title": "Successful Legacy Protocol Authentication Bypassing Conditional Access",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "SigninLogs query returned zero rows in the provided workspace - could not corroborate the sign-in events in that Log Analytics workspace (query result absent).",
+        "Exchange/IMAP access audit logs (Exchange Online protocol logs or mailbox audit logs) were not retrieved; need IMAP connection logs to confirm ports, timestamps, and commands used.",
+        "Full list of the three successfully compromised accounts not provided (only rkumar@cybersecurity.corp is enumerated in incident entities).",
+        "No mailbox audit details available to confirm exact enumeration actions (e.g., folder listing, message read/download, inbox rules creation).",
+        "Contradiction in IP reputation: incident text references AbuseIPDB reports for 193.32.162.7, but the supplied threat_intel object shows 0 reports and verdict CLEAN \u2014 external TI correlation incomplete.",
+        "No evidence provided whether passwords were changed, MFA or sessions revoked, or whether mailbox rules/forwarding addresses were created.",
+        "No firewall / proxy / network egress logs provided to show additional infrastructure used by attacker or other source IPs.",
+        "No change-ticket / business-justification records available to independently validate the claim 'No business justification exists for IMAP'."
+      ],
+      "evidence_gap_count": 8,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1078",
+        "T1110.004"
+      ],
+      "predicted_techniques": [
+        "T1078",
+        "T1087",
+        "T1110.004"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 0.6666666666666666,
+      "latency_s": 37.85,
+      "usage": {
+        "prompt_tokens": 2207,
+        "completion_tokens": 4219,
+        "reasoning_tokens": 2304,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Credential stuffing via legacy IMAP that bypasses Conditional Access MFA, with successful auth and mailbox access."
+    },
+    {
+      "id": "id-006",
+      "category": "identity",
+      "title": "Mass Authentication Failures Across Hundreds of Accounts",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "SigninLogs KQL query returned zero rows from the provided workspace (no live sign-in records were returned to independently validate timestamps, user UPNs, IP addresses, or device details).",
+        "AuditLogs / AzureActivity verification of the exact timestamp when CA-012 was switched to enforcement (CHG-2026-1188) was not available to this analyst (could not confirm the precise enforcement timestamp from activity logs).",
+        "No raw SigninLogs rows provided showing the 53003 result_code entries (we must query SigninLogs with ResultType/ConditionalAccessStatus to confirm per-attempt metadata).",
+        "No DeviceManagement or Endpoint logs provided to enumerate affected device IDs, enrollment events, or device compliance states.",
+        "No per-account list of the ~890 impacted UPNs was provided (incident included an aggregate 'multiple@cybersecurity.corp' placeholder only).",
+        "No threat intelligence or external reputation lookups were performed for IPs because IPs were not returned from the executed KQL.",
+        "No verification that any accounts subsequently had successful sign-ins from unusual locations/devices after enrollment \u2014 further follow-up queries needed.",
+        "No Azure AD Sign-in logs for 50126 or other suspicious result codes were provided to fully rule out simultaneous credential-based attacks during the window."
+      ],
+      "evidence_gap_count": 8,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 30.86,
+      "usage": {
+        "prompt_tokens": 2091,
+        "completion_tokens": 3537,
+        "reasoning_tokens": 1728,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Authentication failure spike is caused by a documented Conditional Access policy rollout, not an attack. All failures are policy-blocked, not credential failures."
+    },
+    {
+      "id": "id-007",
+      "category": "identity",
+      "title": "Bulk User Account Creation Outside Normal Volume",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "No AuditLogs / ProvisioningLogs query results for Azure AD user creation events were returned \u2014 cannot independently verify the 142 creation events in Entra Audit logs.",
+        "No provisioning job logs from the on-prem Workday connector or Microsoft Entra provisioning service were provided/queried to validate this specific run.",
+        "SigninLogs query returned zero rows \u2014 could not verify recent authentications or usage of svc_hrprovision from SigninLogs.",
+        "No list of the actual created user principal names, creation timestamps, or attribute diffs were provided to confirm there were no unexpected values (e.g., admin group assignments).",
+        "CMDB record was stated in the incident but was not directly verified by query or ticketing system audit.",
+        "No checks were performed on whether the provisioning account uses a service principal, managed identity, or interactive credential; no credential-use telemetry was available.",
+        "No check for any subsequent logins from the newly created accounts (which could show compromise) \u2014 SigninLogs returned nothing.",
+        "No check of Azure AD risk detections or Conditional Access events correlated to these accounts was performed."
+      ],
+      "evidence_gap_count": 8,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1136.003"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 29.6,
+      "usage": {
+        "prompt_tokens": 2198,
+        "completion_tokens": 3404,
+        "reasoning_tokens": 1728,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Bulk account creation is the documented quarterly graduate intake, executed by the HR provisioning service account from the corporate IP range."
+    },
+    {
+      "id": "id-008",
+      "category": "identity",
+      "title": "Global Administrator Privilege Elevation at Unusual Hour",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 78,
+      "evidence_gaps": [
+        "PIM audit / PrivilegedRoleActivation logs were not retrieved; no direct PIM Activation audit record (approver identity and approval artifact) was validated from Azure AD AuditLogs or PrivilegedIdentityManagement logs.",
+        "SigninLogs query returned zero rows from the indicated workspace \u2014 could not corroborate sign-in IPs, device info, or conditional access evaluation for jokafor@cybersecurity.corp during the activation window.",
+        "No query of Azure AD AuditLogs / AuditLogs / DirectoryLogs for changes performed while elevated (e.g., directory writes, role changes, application permission changes).",
+        "No verification of the approving administrator account (identity, MFA status, whether the approval was automated or manual).",
+        "No review of host/endpoint telemetry (DeviceEvents, Process creation, or network egress) for actions taken during the elevation window.",
+        "No external threat intelligence lookup performed on the user, approver, or any IPs (because SigninLogs returned no IPs).",
+        "Unable to verify the content of INC-2026-4471 ticket and whether the ticket text legitimately required Global Admin privileges."
+      ],
+      "evidence_gap_count": 7,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1078"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 28.59,
+      "usage": {
+        "prompt_tokens": 2098,
+        "completion_tokens": 3257,
+        "reasoning_tokens": 1792,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Privileged elevation followed the mandated PIM workflow with approval and a linked incident ticket - the control worked as designed."
+    },
+    {
+      "id": "id-009",
+      "category": "identity",
+      "title": "Sign-in from Unfamiliar Country - Singapore",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 75,
+      "evidence_gaps": [
+        "SigninLogs query provided in incident returned zero rows; the specific SigninLogs entry for the asserted sign-in (timestamp, UserPrincipalName, IPAddress) was not returned and could not be independently verified.",
+        "No raw Azure AD SigninLogs record (time, location, deviceDetail.deviceId, ipAddress, authenticationMethodsUsed) was available to confirm exact timestamp, device ID, and MFA method details.",
+        "No Conditional Access/Sign-in risk evaluation record accessible to confirm risk level assigned by Azure AD at time of sign-in.",
+        "No VPN / corporate gateway logs or endpoint telemetry (e.g., Defender for Endpoint) provided to corroborate the device network egress path or that the device was physically in Singapore.",
+        "Discrepancy between incident location (Singapore) and threat-intel country for IP (ID / Indonesia) not resolved with additional geolocation sources.",
+        "No HR/ticketing artifact attached that explicitly links the travel booking to this sign-in event (we only have the incident statement that the travel system shows approval).",
+        "No session token/refresh-session checks were performed to determine if long-lived refresh tokens or legacy auth were used."
+      ],
+      "evidence_gap_count": 7,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1078"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 31.59,
+      "usage": {
+        "prompt_tokens": 2197,
+        "completion_tokens": 3091,
+        "reasoning_tokens": 1600,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Foreign sign-in matches an approved travel request and the device is unchanged and compliant throughout."
+    },
+    {
+      "id": "id-010",
+      "category": "identity",
+      "title": "Dormant Account Reactivated After 11 Months",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 60,
+      "evidence_gaps": [
+        "SigninLogs query for the last 24 hours returned zero rows; cannot corroborate the sign-in event in Azure AD logs from the provided query \u2014 need to expand timeframe (90d) and query specific UserPrincipalName.",
+        "No SharePoint (Unified Audit) logs were retrieved to confirm exact resources accessed, timestamps, or file operations.",
+        "No detailed Azure AD sign-in record was retrieved (device info, app id, conditional access evaluation, authentication methods used, MFA method id).",
+        "No endpoint telemetry (MDM/Microsoft Defender for Endpoint) to link the IP to a managed device or to see process/activity on a host.",
+        "No HR or contractor-engagement record provided to confirm legitimate contractor return.",
+        "No refresh token/session revocation status or evidence of whether legacy authentication was used.",
+        "No Identity Protection or Sign-in risk score details beyond the alert summary were present in incident data.",
+        "No mailbox or data exfiltration telemetry (SharePoint download events, egress logs) was provided.",
+        "No previous historical sign-in trend data for cwhitfield (beyond the text stating last active 11 months ago) was returned by queries."
+      ],
+      "evidence_gap_count": 9,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1078"
+      ],
+      "predicted_techniques": [
+        "T1078"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 27.07,
+      "usage": {
+        "prompt_tokens": 2216,
+        "completion_tokens": 3068,
+        "reasoning_tokens": 1408,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Dormant account reactivated and used successfully. Could be a returning contractor or an attacker using a stale credential - HR status is unavailable in the incident."
+    },
+    {
+      "id": "id-011",
+      "category": "identity",
+      "title": "New MFA Method Registered from Unrecognised IP",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 75,
+      "evidence_gaps": [
+        "SigninLogs query returned zero rows for the supplied workspace/timeframe \u2014 no corroborating sign-in events were returned by the provided KQL (SigninLogs | where TimeGenerated >= ago(24h) | summarize ...).",
+        "No Azure AD AuditLogs (AuditLogs) query results provided for the exact 'Add authentication method' / 'SelfServicePasswordReset' / 'Add phone/app' events to verify the registration event details, timestamp, or actor context.",
+        "No SigninLogs filtered specifically for gbaptiste@cybersecurity.corp across a longer window (7-30 days) were provided to verify prior IP history, successful authentications, or anomalous simultaneous sessions.",
+        "Unable to verify whether the calendar entry is legitimate or created by the account owner (no access to calendar audit/activity or HR/travel approvals).",
+        "No device or Conditional Access details provided (device ID, conditional access evaluation, or location confidence).",
+        "No evidence of any subsequent use of the newly-registered authenticator (no follow-on sign-ins validated to have used the new method).",
+        "No endpoint (host) telemetry provided indicating lateral movement or device compromise \u2014 process and endpoint data are absent.",
+        "Unable to check mailbox/Exchange/O365 audit logs to determine if calendar or mailbox activity was legitimate or manipulated."
+      ],
+      "evidence_gap_count": 8,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [
+        "T1556.006"
+      ],
+      "predicted_techniques": [
+        "T1556.006"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 30.86,
+      "usage": {
+        "prompt_tokens": 2215,
+        "completion_tokens": 3547,
+        "reasoning_tokens": 1664,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "MFA method registered from an unfamiliar IP, but the user is travelling and no malicious follow-on activity is present. Needs user verification, not an autonomous verdict."
+    },
+    {
+      "id": "id-012",
+      "category": "identity",
+      "title": "Repeated Self-Service Password Resets by Single User",
+      "expected": "BENIGN",
+      "predicted": "FALSE_POSITIVE",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "SigninLogs KQL query returned zero rows (SigninLogs | where TimeGenerated >= ago(24h) | summarize count(), make_set(IPAddress), make_set(Location) by UserPrincipalName) \u2014 unable to independently verify sign-in history/locations from the supplied workspace.",
+        "No executed AuditLogs / AzureADPasswordReset logs were provided to show SSPR event IDs, timestamps, or device IDs for each reset (unable to confirm exact event times and device identifiers).",
+        "No device registration (Intune/DeviceEvents) telemetry supplied to verify the exact device ID or hostname of the 'compliant laptop'.",
+        "No MFA authentication detail logs (Authenticator verification SAML/OIDC logs) were provided to validate the method and device used for each verification step.",
+        "No helpdesk ticket content beyond the ticket ID and summary was available to independently validate the user\u2019s statement.",
+        "No additional sign-in telemetry (e.g., conditional access evaluations, risky sign-in flags) was provided from other workspaces or SIEM sources."
+      ],
+      "evidence_gap_count": 6,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1078",
+        "T1098"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 32.81,
+      "usage": {
+        "prompt_tokens": 2175,
+        "completion_tokens": 3718,
+        "reasoning_tokens": 2304,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Self-service password reset loop by a user who forgot their new password. Real activity, correctly detected, no adversary."
+    },
+    {
+      "id": "nw-001",
+      "category": "network_data",
+      "title": "DNS Tunnelling - High Volume Encoded TXT Queries",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "No DNS server logs or DnsEvents (e.g., Windows DNS, Pi-hole, cloud DNS analytics) were available/queried in the workspace to show raw query timestamps, query source IP and query payloads",
+        "No DeviceNetworkEvents or network flow/Firewall logs ingested into the workspace to confirm UDP/TCP port usage and session metadata",
+        "DeviceProcessEvents query returned zero rows \u2014 process creation/parent-child lineage on WKS-ACC-063 is missing from the workspace",
+        "No EDR timeline/endpoint forensic artifact (process tree, module loads, memory image) was returned for WKS-ACC-063",
+        "No PCAP or network capture available to reconstruct payload encoding and exact bytes transferred beyond the provided aggregate estimate",
+        "Threat intelligence check only for IP 190.115.18.22; domain reputation/WHOIS full record and passive DNS history not queried in this investigation",
+        "No user or service account context (local account or UPN) for actions on WKS-ACC-063 available in SigninLogs or EDR data"
+      ],
+      "evidence_gap_count": 7,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1048",
+        "T1071.004"
+      ],
+      "predicted_techniques": [
+        "T1048",
+        "T1071.004"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 34.92,
+      "usage": {
+        "prompt_tokens": 2821,
+        "completion_tokens": 3803,
+        "reasoning_tokens": 1920,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "High-volume TXT queries with base32-encoded subdomains to a single authoritative server is DNS tunnelling used for exfiltration."
+    },
+    {
+      "id": "nw-002",
+      "category": "network_data",
+      "title": "Mailbox Rule Forwarding Finance Keywords to External Address",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "SigninLogs KQL query executed returned zero rows for the workspace provided \u2014 could not independently validate the 'risky' sign-in event or obtain its full metadata (Timestamp, DeviceDetail, ASN, MFA result).",
+        "No Exchange/Admin audit logs (AuditLogs / ExchangeMailboxAuditLogs / UnifiedAuditLog) were retrieved to confirm the exact creation timestamp, creation client (OWA/Graph/Managed API), or the actor's IP in mailbox-audit records.",
+        "No Message Trace / Exchange transport logs were retrieved to confirm whether any finance messages were actually forwarded to accounts-payable@cybersecurlty-corp.com and the count/timestamps of such messages.",
+        "WHOIS/DNS registration and MX records for cybersecurlty-corp.com were not pulled; the description states it was registered 4 days ago but this was not independently verified.",
+        "No evidence from Conditional Access / Sign-in risk remediation (e.g., token revocation, MFA prompts) was collected to show post-signin remediation actions.",
+        "No device/process telemetry (e.g., Defender for Endpoint DeviceEvents or DeviceProcessEvents) was queried for signs of local credential harvesting or session hijacking on any endpoint used by rhaddad@cybersecurity.corp."
+      ],
+      "evidence_gap_count": 6,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1114.003",
+        "T1564.008"
+      ],
+      "predicted_techniques": [
+        "T1114.003",
+        "T1564.008"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 35.57,
+      "usage": {
+        "prompt_tokens": 2248,
+        "completion_tokens": 4032,
+        "reasoning_tokens": 2112,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Hidden inbox rule auto-forwarding finance keywords externally and deleting the originals, created after a risky sign-in, is business email compromise."
+    },
+    {
+      "id": "nw-003",
+      "category": "network_data",
+      "title": "Sequential SMB Admin Share Access Across 40 Hosts",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 78,
+      "evidence_gaps": [
+        "No file hash (MD5/SHA256) for the 214 KB executable was provided; hashes were not available for threat intel lookup.",
+        "Device/endpoint telemetry was not returned: DeviceProcessEvents query returned 0 rows \u2014 no initiating process, PID, command line, or process creation events were available for WKS-SALES-155 or the target servers.",
+        "Sign-in telemetry for hd_operator3@cybersecurity.corp returned 0 rows in the executed SigninLogs query; AAD sign-in evidence for time-of-event could not be corroborated.",
+        "No SMB/file access logs (SecurityEvent Windows events such as 5140/4663/4624 or Defender for Endpoint file/behavior alerts) were available in the provided queries \u2014 evidence of file write on targets not directly captured in workspace results.",
+        "No list of the 40 target hostnames, their IPs, or file system artifacts was provided for collection/validation (only WKS-SALES-155 and account were enumerated).",
+        "No threat intelligence enrichment data present in incident payload for the unsigned binary or source workstation IP(s).",
+        "No network telemetry (firewall/proxy/NDR) or bytes transferred information was provided for SMB egress to the 40 hosts.",
+        "No change/handover tickets or helpdesk activity logs were provided to confirm whether these were authorized administrative actions."
+      ],
+      "evidence_gap_count": 8,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1021.002",
+        "T1570"
+      ],
+      "predicted_techniques": [
+        "T1021.002",
+        "T1078",
+        "T1570"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 0.6666666666666666,
+      "latency_s": 36.1,
+      "usage": {
+        "prompt_tokens": 2727,
+        "completion_tokens": 4031,
+        "reasoning_tokens": 2176,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Sequential admin-share access across dozens of hosts with an identical executable copied to each is hands-on-keyboard lateral movement."
+    },
+    {
+      "id": "nw-004",
+      "category": "network_data",
+      "title": "Sustained Tor Network Traffic from Production Application Server",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "TRUE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "DeviceProcessEvents query returned zero rows \u2014 no process creation/parenting evidence was available from the provided workspace to confirm which process invoked the web shell or initiated Tor connections.",
+        "SigninLogs query returned zero rows \u2014 no authentication events available to determine user account context or if credentials were abused for lateral movement.",
+        "No file hash, filename, or full path for the discovered web shell was provided (only 'application's upload directory'), preventing IOC hash enrichment and AV/Sandbox lookups.",
+        "No firewall / perimeter proxy logs or Netflow records were provided to independently verify all four Tor guard relay IPs, ports, session durations, or per-connection byte counts.",
+        "No memory image, process dump, or forensic snapshot of SRV-WEB-07 was available to confirm in-memory C2 artifacts, loaded modules, or running malicious processes.",
+        "No evidence provided for which user or source uploaded the web shell (missing webserver/IIS logs, application logs, or CMS audit logs).",
+        "No web server (IIS) request logs or application-layer logs were returned to show how the upload occurred or to identify the uploader's IP/UA string.",
+        "Unable to verify whether sensitive data was included in the 4.2 GB transferred; content-level inspection not available."
+      ],
+      "evidence_gap_count": 8,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1090.003",
+        "T1573"
+      ],
+      "predicted_techniques": [
+        "T1041",
+        "T1090.003",
+        "T1505.003"
+      ],
+      "technique_recall": 0.5,
+      "technique_precision": 0.3333333333333333,
+      "latency_s": 45.04,
+      "usage": {
+        "prompt_tokens": 2801,
+        "completion_tokens": 4476,
+        "reasoning_tokens": 2560,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Encrypted traffic to Tor guard nodes from a server that has no business reason for anonymised egress, sustained over hours."
+    },
+    {
+      "id": "nw-005",
+      "category": "network_data",
+      "title": "Regular Interval Beaconing Pattern from 200 Endpoints",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "Did not retrieve endpoint process-level telemetry showing the Datadog agent process name, PID, or process command-lines on the 200 endpoints (no DeviceProcessEvents records proving datadog-agent.exe is the initiating process).",
+        "No direct network flow logs or PCAPs were provided to independently validate packet payloads, exact byte counts, or precise timing jitter beyond the aggregated alert.",
+        "Could not independently verify DNS resolution records, TLS certificate chain or exact certificate thumbprint from the SIEM; TLS metadata described in incident text was not re-enriched here.",
+        "Unable to access the change ticket CHG-2026-0902 or the software inventory system to validate deployment details and who approved the change.",
+        "KQL queries provided returned zero rows (SigninLogs and DeviceProcessEvents) \u2014 these absent results are uncorroborated evidence gaps rather than proof of benignity.",
+        "No endpoint EDR process creation events or Windows event logs were available to confirm the agent's exact behavior or to exclude a mimic process using Datadog DNS/hostnames."
+      ],
+      "evidence_gap_count": 6,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1071.001"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 32.89,
+      "usage": {
+        "prompt_tokens": 2815,
+        "completion_tokens": 3228,
+        "reasoning_tokens": 1664,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Fixed-interval outbound traffic is the monitoring agent's documented telemetry heartbeat to the vendor SaaS endpoint."
+    },
+    {
+      "id": "nw-006",
+      "category": "network_data",
+      "title": "Multi-Terabyte Outbound Data Transfer Overnight",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "BENIGN",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "SigninLogs KQL query returned zero rows for last 24h; could not validate interactive or service account authentications related to the backup job from Azure SigninLogs.",
+        "DeviceProcessEvents KQL query returned zero rows; could not validate the exact process, process tree, command line, or PID on SRV-BACKUP-01 that initiated the transfer (backup software executable not observed in DeviceProcessEvents output).",
+        "No access to raw backup application logs, checksums, or job run audit entries beyond the incident description; unable to independently verify the job metadata and owner.",
+        "No ExpressRoute flow logs / NetFlow / NSG flow data provided to independently verify network path or port/protocol details for the transfer.",
+        "Unable to verify change management ticket, scheduled task definition, or DR provider contractual IP range documentation from authoritative systems."
+      ],
+      "evidence_gap_count": 5,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1048"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 30.66,
+      "usage": {
+        "prompt_tokens": 2790,
+        "completion_tokens": 3408,
+        "reasoning_tokens": 1984,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Large overnight outbound transfer is the scheduled offsite backup replication to the contracted DR provider over a dedicated link."
+    },
+    {
+      "id": "nw-007",
+      "category": "network_data",
+      "title": "Mass File Download from SharePoint by Single User",
+      "expected": "FALSE_POSITIVE",
+      "predicted": "FALSE_POSITIVE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "SigninLogs KQL query returned zero rows from the 'law-soc-agent' workspace for the provided query \u2014 unable to corroborate sign-in events (conditional access, device, IP) from this workspace.",
+        "DeviceProcessEvents KQL query returned zero rows \u2014 no host process telemetry (OneDrive.exe PID/command line) available in this workspace to confirm the initiating process details.",
+        "Unable to directly verify help desk ticket HD-91044 via ITSM/Change Management system from this data set.",
+        "No SharePoint audit logs or OneDrive admin logs were returned here to show exact file download operations or timestamps.",
+        "No Azure AD sign-in or Conditional Access evaluation events visible from the provided queries to confirm authentication context (MFA, device state).",
+        "No network egress logs (proxy/firewall) were provided to independently confirm that no files left the tenant.",
+        "No external threat intelligence hits for any IPs, processes, or hashes were available in the incident payload."
+      ],
+      "evidence_gap_count": 7,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1530"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 30.7,
+      "usage": {
+        "prompt_tokens": 2718,
+        "completion_tokens": 2831,
+        "reasoning_tokens": 1408,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Mass file downloads are the sanctioned OneDrive sync client performing a first-time full sync after a device rebuild."
+    },
+    {
+      "id": "nw-008",
+      "category": "network_data",
+      "title": "Credential Phishing Campaign Targeting 300 Users",
+      "expected": "TRUE_POSITIVE",
+      "predicted": "BENIGN",
+      "correct": false,
+      "missed_threat": true,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "SigninLogs KQL returned zero rows for the query run (absence of rows is a gap \u2014 could not independently corroborate sign-in activity for targeted accounts beyond this query).",
+        "No MessageTrace / Exchange Transport / EmailEvents query results available in this investigation to independently confirm the quarantine count and per-recipient disposition (query not executed or not returned).",
+        "No Safe Links / ATP click telemetry query was available to independently verify that none of the 300 users clicked the credential-harvesting link.",
+        "Unable to fetch raw message headers or full mail trace for representative quarantined messages to confirm sender spoofing/vector details.",
+        "Unable to validate the tenant-wide block operation in mailbox/transport config logs or change tickets (reliance on incident text for block action).",
+        "Threat intelligence coverage limited to the included feed for 209.85.220.41; additional IOCs (URLs used in messages) were not provided and therefore not reputation-checked.",
+        "No endpoint process or network telemetry (DeviceProcessEvents, NetworkConnection logs) were queried for recipients/hosts because no compromise indicators were present; absence of endpoint queries is a gap if follow-up is required."
+      ],
+      "evidence_gap_count": 7,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "deep_reasoning",
+      "expected_techniques": [
+        "T1566.002"
+      ],
+      "predicted_techniques": [
+        "T1566.002"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 29.22,
+      "usage": {
+        "prompt_tokens": 2167,
+        "completion_tokens": 3279,
+        "reasoning_tokens": 1728,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "A real phishing campaign genuinely targeted the organisation - the detection was correct and the activity was malicious. That the gateway blocked it changes the required response (none) but not the verdict. Originally mislabeled FALSE_POSITIVE; a false positive means the detection fired on non-malicious activity, which is not the case here. Corrected after the agent returned TRUE_POSITIVE consistently across independent runs."
+    },
+    {
+      "id": "nw-009",
+      "category": "network_data",
+      "title": "Outbound Connections to Recently Registered Domain",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 70,
+      "evidence_gaps": [
+        "No DNS query logs provided or searched: cannot confirm domain resolution history, TTLs, or other resolved IPs for analytics-suite-eu.com.",
+        "No web proxy / firewall HTTP(S) logs returned: missing User-Agent, URL path, referrer, SNI, and precise timestamps for the HTTPS requests.",
+        "DeviceProcessEvents query returned zero rows \u2014 no per-endpoint process creation/parent-child evidence to determine whether an automated/scripted client or a browser initiated the traffic.",
+        "SigninLogs query returned zero rows in the workspace queried \u2014 no mapped user identities for the outbound activity could be validated from Azure AD logs.",
+        "WHOIS/registrant details for analytics-suite-eu.com were not provided; need registrant/org contact to validate vendor claims.",
+        "TLS certificate details (issuer, subject O, SANs, validity dates, OCSP/CRL status) were not collected.",
+        "Cannot enumerate the full list and exact hostnames of the 'twelve endpoints' \u2014 only WKS-MKT-VARIOUS is provided.",
+        "No network flow/byte counts or pcap available \u2014 bytes_transferred and connection duration unknown.",
+        "No EDR alerts or detections (beyond the single Defender alert) with associated process/command-line artifacts were returned \u2014 limits ability to map technique beyond network C2 pattern.",
+        "No procurement change ticket or direct confirmation from the marketing team about the vendor trial was available to validate benign intent."
+      ],
+      "evidence_gap_count": 10,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [
+        "T1071.001"
+      ],
+      "predicted_techniques": [
+        "T1071.001"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 40.15,
+      "usage": {
+        "prompt_tokens": 2803,
+        "completion_tokens": 3471,
+        "reasoning_tokens": 1728,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Traffic to a newly registered domain with no threat intel and a plausible business explanation that cannot be confirmed from the incident."
+    },
+    {
+      "id": "nw-010",
+      "category": "network_data",
+      "title": "Upload to Personal Cloud Storage Account",
+      "expected": "SUSPICIOUS_ESCALATE",
+      "predicted": "SUSPICIOUS_ESCALATE",
+      "correct": true,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 65,
+      "evidence_gaps": [
+        "No SigninLogs rows returned for the last 24h query (SigninLogs | ...), so we cannot confirm the authentication context (IP, location, client) for the upload.",
+        "DeviceProcessEvents KQL returned zero rows; no process or parent-process telemetry available from the endpoint to show what application performed the upload (browser vs managed client vs CLI).",
+        "No raw MCAS/MDCA alert artifact included (timestamp, destination account email, sharing permissions, file names and hashes, OAuth token/client ID).",
+        "No cloud provider (Google Workspace) audit logs were available to verify destination account identity, public share links, or sharing recipients.",
+        "No file content or classification available to verify presence/absence of sensitive data.",
+        "No network telemetry (destination IP, port, TLS SNI) provided to validate the endpoint contacted.",
+        "No information on whether the managed transfer service request existed for these files (change/ticket records unavailable).",
+        "No threat intelligence or reputation lookup data for the destination account or endpoints was present in the incident data."
+      ],
+      "evidence_gap_count": 8,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [
+        "T1567.002"
+      ],
+      "predicted_techniques": [
+        "T1567.002"
+      ],
+      "technique_recall": 1.0,
+      "technique_precision": 1.0,
+      "latency_s": 26.22,
+      "usage": {
+        "prompt_tokens": 2711,
+        "completion_tokens": 2951,
+        "reasoning_tokens": 1344,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Personal cloud storage upload by a user with no policy exemption, but modest volume and no other risk indicators - warrants a conversation, not containment."
+    },
+    {
+      "id": "nw-011",
+      "category": "network_data",
+      "title": "Inbound Port Probing Against Branch Office Router",
+      "expected": "BENIGN",
+      "predicted": "FALSE_POSITIVE",
+      "correct": false,
+      "missed_threat": false,
+      "false_alarm": false,
+      "confidence": 80,
+      "evidence_gaps": [
+        "No Azure Firewall diagnostic logs (full flow or packet logs) were retrieved and analysed to show timestamps, number of attempts, or explicit drops for the observed events.",
+        "No router/system logs from the branch edge device were collected to independently confirm ACL drop timestamps and the exact destination IP on the LAN/WAN side.",
+        "No change/contract ticket or written confirmation from the ISP was provided to directly validate the scheduled 4-hour reachability checks (relies on incident description).",
+        "SigninLogs query (SigninLogs | where TimeGenerated >= ago(24h) | summarize count(), make_set(IPAddress), make_set(Location) by UserPrincipalName) returned zero rows; no authentication activity related to this IP could be correlated (query returned no results)."
+      ],
+      "evidence_gap_count": 4,
+      "model_used": "gpt-5-mini",
+      "reasoning_tier": "fast",
+      "expected_techniques": [],
+      "predicted_techniques": [
+        "T1046",
+        "T1595"
+      ],
+      "technique_recall": null,
+      "technique_precision": null,
+      "latency_s": 26.44,
+      "usage": {
+        "prompt_tokens": 2159,
+        "completion_tokens": 2653,
+        "reasoning_tokens": 1472,
+        "llm_calls": 1
+      },
+      "error": null,
+      "rationale": "Port scan originates from the ISP-side CPE performing standard link diagnostics against the branch router; real traffic, no threat."
+    }
+  ]
+}

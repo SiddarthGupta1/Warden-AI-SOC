@@ -7,36 +7,162 @@ on:
     branches: [ main ]
 
 jobs:
-  backend-test-and-lint:
+  backend:
     name: Backend Lint & Tests
     runs-on: ubuntu-latest
-
     defaults:
       run:
         working-directory: ./backend
 
+    # The application refuses to start in production without a signing key, which is
+    # correct. Tests run as development with a throwaway key so that guard is
+    # exercised rather than bypassed.
     env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      APP_ENV: development
+      DEMO_MODE: "True"
+      SECRET_KEY: ci-only-ephemeral-key-not-used-anywhere-else
+      DATABASE_PATH: ci-test.db
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v6
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Linter (Ruff)
-        run: |
-          ruff check --select E9,F63,F7,F82,F app tests
+      - name: Lint (ruff)
+        run: ruff check --select E9,F63,F7,F82,F app tests evals
 
-      - name: Run Test Suite (Pytest)
+      - name: Tests
+        run: pytest -v --no-header
+
+  frontend:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Fail if the bundle grows unexpectedly
+        # A sudden jump usually means a dependency was pulled in by accident.
         run: |
-          pytest -v
+          SIZE=$(du -sk dist | cut -f1)
+          echo "dist size: ${SIZE} KB"
+          if [ "$SIZE" -gt 3000 ]; then
+            echo "::error::Frontend bundle is ${SIZE} KB, above the 3000 KB budget"
+            exit 1
+          fi
+
+  docker:
+    name: Container Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: warden-agent:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify the container starts and serves /healthz
+        # Building is not the same as running. This catches a broken entrypoint,
+        # a missing dependency, or the non-root user being unable to write /data.
+        run: |
+          docker run -d --name soc-ci -p 8000:8000 \
+            -e APP_ENV=development \
+            -e DEMO_MODE=True \
+            -e SECRET_KEY=ci-only-ephemeral-key-not-used-anywhere-else \
+            -e DATABASE_PATH=/data/soc_agent.db \
+            warden-agent:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8000/healthz >/dev/null 2>&1; then
+              echo "container healthy after ${i}s"
+              curl -fsS http://localhost:8000/healthz
+              docker rm -f soc-ci
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::container never became healthy"
+          docker logs soc-ci
+          docker rm -f soc-ci
+          exit 1
+
+  sbom:
+    name: SBOM (CycloneDX)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install cyclonedx-bom
+
+      - name: Generate Python SBOM
+        working-directory: ./backend
+        # `environment` rather than `requirements`: it records the versions that were
+        # actually resolved and installed. requirements.txt uses >= constraints, so a
+        # SBOM built from it would list components with no version at all.
+        run: |
+          mkdir -p ../sbom
+          python -m cyclonedx_py environment \
+            --of JSON --sv 1.5 -o ../sbom/backend-sbom.json
+          python - <<'PY'
+          import json
+          d = json.load(open("../sbom/backend-sbom.json"))
+          print(f"backend components: {len(d.get('components', []))} (spec {d['specVersion']})")
+          PY
+
+      - name: Generate frontend SBOM
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npx --yes @cyclonedx/cyclonedx-npm@latest \
+            --output-format JSON --spec-version 1.5 \
+            --output-file ../sbom/frontend-sbom.json
+
+      - name: Upload SBOMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyclonedx-sbom
+          path: sbom/
+          retention-days: 90

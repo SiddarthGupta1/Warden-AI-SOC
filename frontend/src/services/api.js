@@ -9,24 +9,57 @@ const api = axios.create({
 
 // Attach JWT token to every request if present
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('sentinel_token');
+  const token = localStorage.getItem('warden_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Intercept 401s
+// Normalise auth, authorisation and throttling failures.
+//
+// This app has no router, so the previous behaviour of navigating to '/login'
+// sent the browser to a path this SPA does not define. Depending on how the app
+// is served that either reloaded the whole bundle or produced a blank page. The
+// session is cleared and the app reloaded at the root instead, where App renders
+// the login screen because the token is gone.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
-      localStorage.removeItem('sentinel_token');
-      localStorage.removeItem('sentinel_user');
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+    const status = error.response?.status;
+
+    if (status === 401) {
+      localStorage.removeItem('warden_token');
+      localStorage.removeItem('warden_user');
+      // Let the login screen explain why the user is back there. Note that the
+      // backend issues a fresh signing key on restart when SECRET_KEY is unset,
+      // which invalidates every existing session — a common cause in development.
+      sessionStorage.setItem('warden_session_expired', '1');
+      if (window.location.pathname !== '/') {
+        window.location.href = '/';
+      } else {
+        window.location.reload();
       }
     }
+
+    if (status === 403) {
+      error.userMessage =
+        error.response?.data?.detail ||
+        'Your role does not permit this action.';
+    }
+
+    if (status === 429) {
+      const wait = error.response?.data?.retry_after_seconds;
+      error.userMessage = wait
+        ? `Rate limit reached. Try again in ${wait}s.`
+        : 'Rate limit reached. Please slow down and retry shortly.';
+    }
+
+    if (!error.response) {
+      error.userMessage =
+        'Cannot reach the backend. Check that the API is running on port 8000.';
+    }
+
     return Promise.reject(error);
   }
 );
@@ -35,8 +68,8 @@ export const authApi = {
   login: async (username, password) => {
     const res = await api.post('/auth/json-login', { username, password });
     if (res.data && res.data.access_token) {
-      localStorage.setItem('sentinel_token', res.data.access_token);
-      localStorage.setItem('sentinel_user', JSON.stringify({
+      localStorage.setItem('warden_token', res.data.access_token);
+      localStorage.setItem('warden_user', JSON.stringify({
         username: res.data.username,
         role: res.data.role
       }));
@@ -50,8 +83,8 @@ export const authApi = {
       new_password: newPassword
     });
     if (res.data && res.data.access_token) {
-      localStorage.setItem('sentinel_token', res.data.access_token);
-      localStorage.setItem('sentinel_user', JSON.stringify({
+      localStorage.setItem('warden_token', res.data.access_token);
+      localStorage.setItem('warden_user', JSON.stringify({
         username: res.data.username,
         role: res.data.role
       }));
@@ -63,8 +96,8 @@ export const authApi = {
     return res.data;
   },
   logout: () => {
-    localStorage.removeItem('sentinel_token');
-    localStorage.removeItem('sentinel_user');
+    localStorage.removeItem('warden_token');
+    localStorage.removeItem('warden_user');
     window.location.href = '/login';
   }
 };

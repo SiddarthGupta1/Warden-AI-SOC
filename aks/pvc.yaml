@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: warden-data
+  namespace: warden
+  labels:
+    app: warden-agent
+spec:
+  # ReadWriteOnce: an Azure managed disk attaches to exactly one node at a time.
+  # This is deliberate and matches the storage engine: the application uses SQLite,
+  # which is a single-writer database. Two replicas sharing this claim would either
+  # fail to schedule or diverge, so the Deployment is pinned to one replica.
+  #
+  # To run more than one replica, move the application to a networked database
+  # (PostgreSQL via Azure Database for PostgreSQL) and delete this claim. The
+  # storage layer is isolated in backend/app/db.py for exactly that reason.
+  accessModes:
+    - ReadWriteOnce
+  # managed-csi is the default AKS storage class (Standard SSD, zone-redundant
+  # options available as managed-csi-premium / *-zrs).
+  storageClassName: managed-csi
+  resources:
+    requests:
+      storage: 2Gi

@@ -1,24 +1,29 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sentinel-soc-agent
-  namespace: sentinel-soc
+  name: warden-agent
+  namespace: warden
   labels:
-    app: sentinel-soc-agent
+    app: warden-agent
 spec:
-  replicas: 2
+  # Pinned to one replica on purpose. The application stores users, triage reports
+  # and the remediation audit trail in SQLite on a ReadWriteOnce volume, so a second
+  # replica would either fail to attach the disk or operate on a different database.
+  # Scaling out requires moving to a networked database first (see aks/pvc.yaml).
+  replicas: 1
   selector:
     matchLabels:
-      app: sentinel-soc-agent
+      app: warden-agent
+  # Recreate, not RollingUpdate. A rolling update starts the new pod before
+  # terminating the old one, and the ReadWriteOnce disk is still attached to the
+  # old pod's node - the new pod blocks in ContainerCreating and the rollout
+  # deadlocks. Recreate accepts brief downtime instead of never completing.
   strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
+    type: Recreate
   template:
     metadata:
       labels:
-        app: sentinel-soc-agent
+        app: warden-agent
     spec:
       securityContext:
         runAsNonRoot: true
@@ -27,7 +32,7 @@ spec:
         fsGroup: 10001
       containers:
         - name: agent
-          image: YOUR_ACR_NAME.azurecr.io/sentinel-soc-agent:latest
+          image: YOUR_ACR_NAME.azurecr.io/warden-agent:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -47,9 +52,17 @@ spec:
               memory: "1Gi"
           envFrom:
             - configMapRef:
-                name: sentinel-soc-config
+                name: warden-config
             - secretRef:
-                name: sentinel-soc-secret
+                name: warden-secret
+          env:
+            # Point the database at the mounted volume rather than the container
+            # filesystem, which is discarded on every restart and image rollout.
+            - name: DATABASE_PATH
+              value: /data/soc_agent.db
+          volumeMounts:
+            - name: data
+              mountPath: /data
           livenessProbe:
             httpGet:
               path: /healthz
@@ -66,3 +79,7 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 2
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: warden-data

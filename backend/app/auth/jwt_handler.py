@@ -1,12 +1,14 @@
 from datetime import datetime, timedelta
 from typing import Optional
 import hashlib
+import logging
 import secrets
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from app.config import settings
+from app import db
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -43,9 +45,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     except Exception:
         return False
 
-# In-memory user database (initialized with random credentials on first run)
-USERS_DB = {}
-
 DEFAULT_ACCOUNTS_CONFIG = [
     {
         "username": settings.ADMIN_USERNAME or "soc_admin",
@@ -67,37 +66,39 @@ DEFAULT_ACCOUNTS_CONFIG = [
     },
 ]
 
-def init_default_users() -> dict:
+def init_default_users() -> None:
     """
-    On application startup, checks if each default account exists in the user store.
-    For ALL default accounts (including soc_admin, analyst, tier1_analyst), generates a
-    cryptographically secure random temporary password, hashes it, and creates the account
-    with must_reset_password = True.
-    Logs and outputs the generated temporary credentials clearly.
-    """
-    import logging
-    auth_logger = logging.getLogger("sentinel_soc_agent.auth")
-    newly_generated = []
+    Seed the default accounts, once, on first run against an empty database.
 
+    Accounts now live in SQLite, so this is genuinely a first-run action: after the
+    initial seed the accounts and their chosen passwords survive restarts, and no
+    new temporary credentials are printed. Previously the store was a dict, so every
+    restart reseeded and reprinted fresh passwords, silently invalidating whatever
+    the user had set.
+    """
+    auth_logger = logging.getLogger("warden.auth")
+    db.init_db()
+
+    newly_generated = []
     for account in DEFAULT_ACCOUNTS_CONFIG:
         username = account["username"]
-        if username not in USERS_DB:
+        if not db.user_exists(username):
             raw_password = secrets.token_urlsafe(12)
-            USERS_DB[username] = {
-                "username": username,
-                "full_name": account["full_name"],
-                "email": account["email"],
-                "hashed_password": get_password_hash(raw_password),
-                "role": account["role"],
-                "disabled": False,
-                "must_reset_password": True,
-            }
+            db.create_user(
+                username=username,
+                hashed_password=get_password_hash(raw_password),
+                role=account["role"],
+                full_name=account["full_name"],
+                email=account["email"],
+                must_reset_password=True,
+            )
             newly_generated.append((username, account["role"], raw_password))
 
     if newly_generated:
         banner = "\n" + "=" * 80 + "\n"
-        banner += "[SECURITY NOTICE] All user accounts initialized with random temporary credentials.\n"
-        banner += "Every user MUST reset their password on first login via the portal.\n"
+        banner += "[SECURITY NOTICE] New accounts created with random temporary credentials.\n"
+        banner += "Each user MUST reset their password on first login via the portal.\n"
+        banner += "These are shown once and are not recoverable from the database.\n"
         banner += "-" * 80 + "\n"
         for username, role, pwd in newly_generated:
             banner += f"  Username: {username:<18} | Role: {role:<10} | Temporary Password: {pwd}\n"
@@ -107,11 +108,8 @@ def init_default_users() -> dict:
             print(banner)
         except Exception:
             pass
-
-    return USERS_DB
-
-# Ensure default users are initialized on module load
-init_default_users()
+    else:
+        auth_logger.info("User accounts loaded from the database; no new credentials issued.")
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
@@ -122,6 +120,28 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
+
+def require_role(*allowed_roles: str):
+    """
+    Dependency that gates an endpoint on the caller's role.
+
+    Roles were defined and issued from the start but never checked, so any
+    authenticated account could execute containment actions or change platform
+    settings. The role is read from the user store inside get_current_user, so a
+    forged claim in the token cannot satisfy this check.
+    """
+    async def _guard(current_user: "User" = Depends(get_current_user)) -> "User":
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"This action requires one of the following roles: "
+                    f"{', '.join(allowed_roles)}. Your role is '{current_user.role}'."
+                ),
+            )
+        return current_user
+    return _guard
+
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     credentials_exception = HTTPException(
@@ -139,8 +159,31 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     except JWTError:
         raise credentials_exception
         
-    user_dict = USERS_DB.get(token_data.username)
+    user_dict = db.get_user(token_data.username)
     if user_dict is None:
-        # Support fallback user for dynamic login if authenticated via external SSO
-        return User(username=token_data.username, email=f"{token_data.username}@corp.local", role=token_data.role, full_name=token_data.username)
-    return User(**user_dict)
+        # A validly-signed token for an unknown subject is NOT a valid session. Previously
+        # this branch fabricated a User from the token's own claims, which meant anyone able
+        # to mint a token (e.g. with a default or leaked SECRET_KEY) could authenticate as
+        # any username with any role. External SSO, if added later, must provision the user
+        # into the store at login rather than being trusted to assert identity here.
+        auth_logger = logging.getLogger("warden.auth")
+        auth_logger.warning(
+            f"Rejected token for unknown subject '{token_data.username}' "
+            f"(claimed role '{token_data.role}'). Possible forged token."
+        )
+        raise credentials_exception
+
+    if user_dict.get("disabled", False):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user account")
+
+    # Role comes from the user store, never from the token, so a tampered or stale claim
+    # cannot escalate privileges. Build explicitly so storage columns such as
+    # hashed_password never leak into an API response model.
+    return User(
+        username=user_dict["username"],
+        email=user_dict.get("email", ""),
+        role=user_dict.get("role", "analyst"),
+        full_name=user_dict.get("full_name", ""),
+        disabled=user_dict.get("disabled", False),
+        must_reset_password=user_dict.get("must_reset_password", False),
+    )

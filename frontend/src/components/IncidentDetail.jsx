@@ -612,48 +612,17 @@ export default function IncidentDetail({
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-            {/* Action 1: Isolate Endpoint */}
-            <button
-              onClick={() => {
-                setRemediationResult(null);
-                setRemediationModal({
-                  type: 'isolate_endpoint',
-                  title: 'Isolate Endpoint Device (MDE)',
-                  entity: targetHost,
-                  description: `Isolates host '${targetHost}' from corporate network via Microsoft Defender for Endpoint to prevent lateral movement.`
-                });
-              }}
-              className="p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 hover:border-red-500/50 flex flex-col items-start space-y-1 transition-all text-left group"
-            >
-              <div className="flex items-center space-x-1.5 text-red-400 font-semibold group-hover:text-red-300">
-                <Radio className="w-3.5 h-3.5" />
-                <span>Isolate Host</span>
-              </div>
-              <span className="text-[10px] text-slate-400 truncate w-full">{targetHost}</span>
-            </button>
-
-            {/* Action 2: Revoke Sessions */}
-            <button
-              onClick={() => {
-                setRemediationResult(null);
-                setRemediationModal({
-                  type: 'revoke_sessions',
-                  title: 'Revoke Entra ID Sessions',
-                  entity: targetUser,
-                  description: `Invalidates all active refresh tokens and OAuth sessions for user '${targetUser}', enforcing MFA on next login.`
-                });
-              }}
-              className="p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 hover:border-amber-500/50 flex flex-col items-start space-y-1 transition-all text-left group"
-            >
-              <div className="flex items-center space-x-1.5 text-amber-400 font-semibold group-hover:text-amber-300">
-                <Lock className="w-3.5 h-3.5" />
-                <span>Revoke Sessions</span>
-              </div>
-              <span className="text-[10px] text-slate-400 truncate w-full">{targetUser}</span>
-            </button>
-
-            {/* Action 3: Block Attacker IP */}
+          {/*
+            Endpoint isolation (Defender for Endpoint) and Entra session revocation are
+            not surfaced here. Both require licensing and tenant-level consent this
+            deployment does not have - Machine.Isolate and Graph User.ReadWrite.All with
+            admin consent - so the buttons could only ever return NOT_PERMITTED. Offering
+            a containment control that cannot contain is worse than not offering it.
+            The backend implementations remain in remediation_service.py and become
+            available as soon as the permissions exist.
+          */}
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            {/* Action 1: Block Attacker IP */}
             <button
               onClick={() => {
                 setRemediationResult(null);
@@ -876,7 +845,7 @@ export default function IncidentDetail({
           </h4>
           <div className="space-y-2 mb-3">
             {incident.comments && incident.comments.length > 0 ? (
-              incident.comments.map((c) => (
+              (incident.comments || []).map((c) => (
                 <div
                   key={c.id}
                   className="bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-lg p-3 text-xs space-y-1"

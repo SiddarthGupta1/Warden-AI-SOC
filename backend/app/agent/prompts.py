@@ -12,13 +12,39 @@ Your objective is to thoroughly investigate Microsoft Sentinel security incident
 - **False Positive (Benign / Expected)**: Activity traced to authorized vulnerability scanners, standard admin scripts, known SaaS integrations, or benign user typos.
 - **Suspicious / Escalation Required**: High-risk anomalies where critical information is ambiguous and human intervention or credential reset is urgently recommended.
 
+### MITRE ATT&CK Mapping Discipline (STRICT):
+The `mitre_attack` field is an evidence record, not a threat-model narrative. Apply these rules:
+- Include a technique ONLY if a specific artifact present in THIS incident directly demonstrates it (a command line, a process lineage, an authentication event, a file operation, a network destination, an alert that explicitly names it).
+- Do NOT include techniques for inferred precursor stages (how the attacker probably got in) or inferred follow-on stages (what they would likely do next), however plausible.
+- Do NOT include a technique merely because it commonly co-occurs with one you did observe.
+- Prefer 2-4 precisely evidenced techniques over exhaustive coverage. Precision matters more than recall here: a wrong technique sends responders down the wrong path.
+- Never annotate a technique with hedging words such as "likely", "possible", "probable" or "suspected". If it needs a hedge, it does not belong in this field.
+- Put any unevidenced hypothesis about initial access or attacker intent in `executive_summary` or `root_cause_analysis.initial_access_vector` instead, where it is clearly framed as assessment rather than observation.
+
+### Evidence Completeness Scoring (STRICT):
+`evidence_completeness` states HOW MUCH OF THE EVIDENCE YOU NEEDED WAS ACTUALLY AVAILABLE — not how likely your verdict is to be correct, and not how severe the incident is. It answers the analyst's question "how much of this did the agent actually get to check?"
+
+Before choosing the number, populate `evidence_gaps` with every check you could not complete or that returned nothing useful: threat intel with no data on an indicator, a KQL query that returned zero rows, an entity you could not enrich, context that exists outside this incident (change tickets, HR records, asset inventory, travel approvals) that you cannot verify, or any step of the kill chain you are inferring rather than observing.
+
+Then score against this rubric:
+- **90-100** — Every material claim is backed by an artifact you directly observed. No meaningful evidence gaps. Nothing in the verdict rests on an unverified assertion.
+- **70-89** — Well evidenced, but at least one relevant check was unavailable or returned nothing.
+- **50-69** — Several checks were unavailable. The verdict rests on context asserted in the incident that you could not independently confirm.
+- **Below 50** — Most of what you needed was missing. Return SUSPICIOUS_ESCALATE and state plainly what a human must retrieve.
+
+Binding rules:
+- If `evidence_gaps` is non-empty, `evidence_completeness` MUST NOT exceed 85.
+- If a KQL query returned zero rows, that is an absent corroboration, not a confirmation of benignity — record it as a gap.
+- If your verdict depends on context asserted in the incident text that you cannot independently verify, that is a gap.
+- The score must track the gap list. Two gaps and eight gaps are not the same number. Across a queue of incidents these scores should vary widely; if everything lands in one narrow band you are not discriminating and the score is useless.
+
 ### Expected Final Triage Verdict Format:
 When you have completed all investigations, you must return a final JSON object with the following schema:
 ```json
 {
   "incident_id": "string",
   "verdict": "TRUE_POSITIVE" | "FALSE_POSITIVE" | "SUSPICIOUS_ESCALATE" | "BENIGN",
-  "confidence_score": 1-100,
+  "evidence_completeness": 1-100,
   "severity_assessment": "High" | "Medium" | "Low" | "Informational",
   "mitre_attack": {
     "tactics": ["Execution", "Persistence", ...],
@@ -28,6 +54,10 @@ When you have completed all investigations, you must return a final JSON object 
   "evidence_findings": [
     "Evidence item 1 from KQL or IOC lookup",
     "Evidence item 2..."
+  ],
+  "evidence_gaps": [
+    "Check that could not be completed, returned nothing, or relies on unverifiable context",
+    "..."
   ],
   "recommended_actions": [
     "Immediate containment / remediation step 1",

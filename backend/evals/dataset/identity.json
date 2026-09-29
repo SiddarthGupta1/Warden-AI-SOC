@@ -1,0 +1,305 @@
+{
+  "schema_version": 1,
+  "category": "identity",
+  "description": "Entra ID / authentication incidents. False positives carry decisive benign context (change tickets, documented service accounts, travel records, policy rollouts) so the set measures contextual reasoning rather than keyword matching.",
+  "incidents": [
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1528", "T1566.002"],
+        "severity": "High",
+        "rationale": "Consent granted to an unverified third-party app requesting Mail.ReadWrite and offline_access, delivered by phishing link. Classic OAuth consent grant attack."
+      },
+      "incident": {
+        "id": "id-001",
+        "incidentNumber": 2001,
+        "title": "Illicit OAuth Consent Grant to Unverified Application",
+        "description": "User granted tenant consent to application 'Office365 Doc Viewer' (publisher unverified, registered 3 days ago) requesting Mail.ReadWrite, Files.Read.All and offline_access. Consent originated from a link in an external email. The application is not in the organisation's approved app catalogue and no admin requested it.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["CredentialAccess", "Persistence"],
+        "techniques": ["T1528"],
+        "alertsCount": 2,
+        "alerts": [{"id": "a-2001", "title": "Suspicious application consent", "description": "Consent granted to unverified publisher with high-privilege mail scopes.", "severity": "High", "vendor": "Microsoft Defender for Cloud Apps", "tactics": ["CredentialAccess"], "techniques": ["T1528"]}],
+        "entities": [
+          {"kind": "Account", "name": "pmorris@cybersecurity.corp", "upn": "pmorris@cybersecurity.corp"},
+          {"kind": "Ip", "address": "104.21.44.190", "direction": "Inbound", "location": "Unknown"}
+        ],
+        "labels": ["OAuthAbuse", "ConsentGrant"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1621", "T1078"],
+        "severity": "High",
+        "rationale": "38 MFA push notifications in 12 minutes followed by an approval and immediate mailbox rule creation is MFA fatigue leading to successful compromise."
+      },
+      "incident": {
+        "id": "id-002",
+        "incidentNumber": 2002,
+        "title": "MFA Fatigue - Repeated Push Notifications Followed by Approval",
+        "description": "38 MFA push notifications were issued to user in 12 minutes from IP 91.219.238.12 (Bulgaria). The 38th was approved. Within 90 seconds of the successful sign-in, an inbox rule was created forwarding all mail containing 'invoice' or 'payment' to an external address. User confirms they did not approve intentionally and was asleep at the time.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["CredentialAccess", "InitialAccess", "Collection"],
+        "techniques": ["T1621", "T1078", "T1114.003"],
+        "alertsCount": 3,
+        "alerts": [{"id": "a-2002", "title": "Multi-factor authentication fatigue", "description": "Abnormal volume of MFA challenges to a single user followed by approval.", "severity": "High", "vendor": "Microsoft Entra ID Protection", "tactics": ["CredentialAccess"], "techniques": ["T1621"]}],
+        "entities": [
+          {"kind": "Account", "name": "dfoster@cybersecurity.corp", "upn": "dfoster@cybersecurity.corp"},
+          {"kind": "Ip", "address": "91.219.238.12", "direction": "Inbound", "location": "Sofia, Bulgaria"}
+        ],
+        "labels": ["MFAFatigue", "BEC"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1550.001", "T1557"],
+        "severity": "High",
+        "rationale": "Session token replayed from a different ASN and device fingerprint minutes after issuance, with no corresponding authentication - adversary-in-the-middle token theft."
+      },
+      "incident": {
+        "id": "id-003",
+        "incidentNumber": 2003,
+        "title": "Session Token Replay from Divergent Device Fingerprint",
+        "description": "A session token issued to device ID 8f2a-compliant at 14:02 from Bengaluru was presented at 14:19 from ASN 14061 (DigitalOcean, Frankfurt) with a different browser fingerprint and no corresponding interactive authentication event. Original session remained active concurrently. Sign-in landing page for the original auth was a lookalike domain login.microsftonline-auth.com.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["CredentialAccess", "DefenseEvasion"],
+        "techniques": ["T1550.001", "T1557"],
+        "alertsCount": 2,
+        "alerts": [{"id": "a-2003", "title": "Anomalous token usage", "description": "Token presented from unexpected network and device.", "severity": "High", "vendor": "Microsoft Entra ID Protection", "tactics": ["CredentialAccess"], "techniques": ["T1550.001"]}],
+        "entities": [
+          {"kind": "Account", "name": "svaidya@cybersecurity.corp", "upn": "svaidya@cybersecurity.corp"},
+          {"kind": "Ip", "address": "165.227.88.14", "direction": "Inbound", "location": "Frankfurt, Germany"}
+        ],
+        "labels": ["AiTM", "TokenTheft"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1098.001", "T1078.004"],
+        "severity": "High",
+        "rationale": "A new client secret was added to a privileged service principal by a non-admin account outside change control, then immediately used from an external IP."
+      },
+      "incident": {
+        "id": "id-004",
+        "incidentNumber": 2004,
+        "title": "Credential Added to Privileged Service Principal",
+        "description": "A new client secret with a 2-year expiry was added to service principal 'SP-Graph-Automation' (holds Directory.ReadWrite.All) by user account tnelson, who is not a member of any administrative role and has no ownership of this SP. The secret was used to authenticate from 45.9.148.99 within 4 minutes. No change ticket exists. tnelson's account had shown a risky sign-in 2 hours earlier.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["Persistence", "PrivilegeEscalation"],
+        "techniques": ["T1098.001"],
+        "alertsCount": 2,
+        "alerts": [{"id": "a-2004", "title": "Credential added to application", "description": "New secret registered on a highly privileged service principal.", "severity": "High", "vendor": "Microsoft Entra ID", "tactics": ["Persistence"], "techniques": ["T1098.001"]}],
+        "entities": [
+          {"kind": "Account", "name": "tnelson@cybersecurity.corp", "upn": "tnelson@cybersecurity.corp"},
+          {"kind": "Ip", "address": "45.9.148.99", "direction": "Inbound", "location": "Netherlands"}
+        ],
+        "labels": ["ServicePrincipalAbuse", "Persistence"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1110.004", "T1078"],
+        "severity": "High",
+        "rationale": "Credential stuffing via legacy IMAP that bypasses Conditional Access MFA, with successful auth and mailbox access."
+      },
+      "incident": {
+        "id": "id-005",
+        "incidentNumber": 2005,
+        "title": "Successful Legacy Protocol Authentication Bypassing Conditional Access",
+        "description": "Successful IMAP4 authentication for 3 accounts from 193.32.162.7 after 1,100 failed attempts across 260 accounts. Legacy authentication is exempt from the tenant's MFA Conditional Access policy. All three mailboxes were subsequently enumerated. The source IP is listed in AbuseIPDB with prior credential-stuffing reports. No business justification exists for IMAP in this organisation.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["CredentialAccess", "InitialAccess"],
+        "techniques": ["T1110.004", "T1078"],
+        "alertsCount": 4,
+        "alerts": [{"id": "a-2005", "title": "Credential stuffing via legacy authentication", "description": "High-volume legacy protocol authentication with several successes.", "severity": "High", "vendor": "Microsoft Entra ID Protection", "tactics": ["CredentialAccess"], "techniques": ["T1110.004"]}],
+        "entities": [
+          {"kind": "Account", "name": "rkumar@cybersecurity.corp", "upn": "rkumar@cybersecurity.corp"},
+          {"kind": "Ip", "address": "193.32.162.7", "direction": "Inbound", "location": "Russia"}
+        ],
+        "labels": ["LegacyAuth", "CredentialStuffing"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "FALSE_POSITIVE",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Authentication failure spike is caused by a documented Conditional Access policy rollout, not an attack. All failures are policy-blocked, not credential failures."
+      },
+      "incident": {
+        "id": "id-006",
+        "incidentNumber": 2006,
+        "title": "Mass Authentication Failures Across Hundreds of Accounts",
+        "description": "4,300 sign-in failures across 890 accounts within 1 hour. All failures carry result code 53003 (blocked by Conditional Access), not 50126 (invalid credentials) - no password was ever tested. The identity team enabled Conditional Access policy CA-012 'Require compliant device' in enforcement mode at the start of this window under change ticket CHG-2026-1188. Failures are exclusively from non-compliant personal devices and stopped once users enrolled.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["CredentialAccess"],
+        "techniques": ["T1110"],
+        "alertsCount": 12,
+        "alerts": [{"id": "a-2006", "title": "Anomalous authentication failure volume", "description": "Spike in failed sign-ins across the tenant.", "severity": "High", "vendor": "Microsoft Entra ID Protection", "tactics": ["CredentialAccess"], "techniques": ["T1110"]}],
+        "entities": [
+          {"kind": "Account", "name": "multiple@cybersecurity.corp", "upn": "multiple@cybersecurity.corp"}
+        ],
+        "labels": ["ConditionalAccess", "ApprovedChange"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "FALSE_POSITIVE",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Bulk account creation is the documented quarterly graduate intake, executed by the HR provisioning service account from the corporate IP range."
+      },
+      "incident": {
+        "id": "id-007",
+        "incidentNumber": 2007,
+        "title": "Bulk User Account Creation Outside Normal Volume",
+        "description": "142 user accounts created in 25 minutes by svc_hrprovision, an account documented in the CMDB as the Workday-to-Entra provisioning connector. Source IP 10.4.1.60 is the on-premises provisioning server. All accounts match the naming convention for the graduate intake cohort and correspond to records in the HR system. This occurs every quarter; the previous three intakes generated identical alerts, all closed as benign.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["Persistence"],
+        "techniques": ["T1136.003"],
+        "alertsCount": 1,
+        "alerts": [{"id": "a-2007", "title": "Unusual volume of account creation", "description": "Account creation rate exceeds baseline.", "severity": "Medium", "vendor": "Microsoft Entra ID", "tactics": ["Persistence"], "techniques": ["T1136.003"]}],
+        "entities": [
+          {"kind": "Account", "name": "svc_hrprovision@cybersecurity.corp", "upn": "svc_hrprovision@cybersecurity.corp"},
+          {"kind": "Ip", "address": "10.4.1.60", "direction": "Internal", "location": "Corporate LAN"}
+        ],
+        "labels": ["HRProvisioning", "RecurringBenign"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "FALSE_POSITIVE",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Privileged elevation followed the mandated PIM workflow with approval and a linked incident ticket - the control worked as designed."
+      },
+      "incident": {
+        "id": "id-008",
+        "incidentNumber": 2008,
+        "title": "Global Administrator Privilege Elevation at Unusual Hour",
+        "description": "User elevated to Global Administrator at 03:14 local time. The elevation was requested through Privileged Identity Management, required and received approval from a second administrator, was time-bound to 4 hours, and carried justification text referencing INC-2026-4471 - a Sev-1 mail-flow outage that the on-call rota confirms this engineer was paged for at 02:58. Role was automatically revoked after 3h12m.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["PrivilegeEscalation"],
+        "techniques": ["T1078.004"],
+        "alertsCount": 1,
+        "alerts": [{"id": "a-2008", "title": "Privileged role activated outside business hours", "description": "Global Administrator role activated at an unusual time.", "severity": "Medium", "vendor": "Microsoft Entra ID", "tactics": ["PrivilegeEscalation"], "techniques": ["T1078.004"]}],
+        "entities": [
+          {"kind": "Account", "name": "jokafor@cybersecurity.corp", "upn": "jokafor@cybersecurity.corp"}
+        ],
+        "labels": ["PIM", "OnCall"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "FALSE_POSITIVE",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Foreign sign-in matches an approved travel request and the device is unchanged and compliant throughout."
+      },
+      "incident": {
+        "id": "id-009",
+        "incidentNumber": 2009,
+        "title": "Sign-in from Unfamiliar Country - Singapore",
+        "description": "User signed in from Singapore, a country from which this account has never authenticated. The travel and expense system shows an approved business trip to Singapore for this employee covering these dates, booked six weeks in advance. Device ID and compliance state are unchanged from their usual laptop, MFA was satisfied with the registered hardware key, and the sign-in pattern (working hours in local time, normal applications) is consistent with the user's baseline.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["InitialAccess"],
+        "techniques": ["T1078"],
+        "alertsCount": 1,
+        "alerts": [{"id": "a-2009", "title": "Sign-in from unfamiliar location", "description": "Authentication from a country not previously seen for this identity.", "severity": "Medium", "vendor": "Microsoft Entra ID Protection", "tactics": ["InitialAccess"], "techniques": ["T1078"]}],
+        "entities": [
+          {"kind": "Account", "name": "hlindqvist@cybersecurity.corp", "upn": "hlindqvist@cybersecurity.corp"},
+          {"kind": "Ip", "address": "116.206.12.44", "direction": "Inbound", "location": "Singapore"}
+        ],
+        "labels": ["Travel", "ApprovedTravel"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "SUSPICIOUS_ESCALATE",
+        "techniques": ["T1078"],
+        "severity": "Medium",
+        "rationale": "Dormant account reactivated and used successfully. Could be a returning contractor or an attacker using a stale credential - HR status is unavailable in the incident."
+      },
+      "incident": {
+        "id": "id-010",
+        "incidentNumber": 2010,
+        "title": "Dormant Account Reactivated After 11 Months",
+        "description": "Account cwhitfield, last active 11 months ago and never formally disabled, authenticated successfully from 86.14.22.101 (residential UK ISP) and accessed SharePoint. MFA was satisfied using a previously registered authenticator. No HR record is available in the incident to confirm whether this contractor has returned to a new engagement. The access pattern is limited and unremarkable, and no privilege changes occurred. Insufficient evidence to determine legitimacy either way.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["InitialAccess", "Persistence"],
+        "techniques": ["T1078"],
+        "alertsCount": 1,
+        "alerts": [{"id": "a-2010", "title": "Dormant account activity", "description": "Authentication from an account inactive for an extended period.", "severity": "Medium", "vendor": "Microsoft Entra ID Protection", "tactics": ["InitialAccess"], "techniques": ["T1078"]}],
+        "entities": [
+          {"kind": "Account", "name": "cwhitfield@cybersecurity.corp", "upn": "cwhitfield@cybersecurity.corp"},
+          {"kind": "Ip", "address": "86.14.22.101", "direction": "Inbound", "location": "Manchester, UK"}
+        ],
+        "labels": ["DormantAccount", "StaleIdentity"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "SUSPICIOUS_ESCALATE",
+        "techniques": ["T1556.006"],
+        "severity": "Medium",
+        "rationale": "MFA method registered from an unfamiliar IP, but the user is travelling and no malicious follow-on activity is present. Needs user verification, not an autonomous verdict."
+      },
+      "incident": {
+        "id": "id-011",
+        "incidentNumber": 2011,
+        "title": "New MFA Method Registered from Unrecognised IP",
+        "description": "A new authenticator app was registered for user gbaptiste from 197.210.44.8 (Lagos, Nigeria), an IP and country with no prior history for this identity. The registration succeeded using the existing registered method, so the actor held valid credentials and the prior second factor. The user's calendar shows a conference in Lagos this week, but no approved travel record exists in the expense system. No suspicious activity followed the registration and the original MFA method was not removed.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["Persistence"],
+        "techniques": ["T1556.006"],
+        "alertsCount": 1,
+        "alerts": [{"id": "a-2011", "title": "Security info registered from unfamiliar location", "description": "New authentication method added from an unrecognised network.", "severity": "Medium", "vendor": "Microsoft Entra ID Protection", "tactics": ["Persistence"], "techniques": ["T1556.006"]}],
+        "entities": [
+          {"kind": "Account", "name": "gbaptiste@cybersecurity.corp", "upn": "gbaptiste@cybersecurity.corp"},
+          {"kind": "Ip", "address": "197.210.44.8", "direction": "Inbound", "location": "Lagos, Nigeria"}
+        ],
+        "labels": ["MFARegistration", "NeedsUserVerification"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "BENIGN",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Self-service password reset loop by a user who forgot their new password. Real activity, correctly detected, no adversary."
+      },
+      "incident": {
+        "id": "id-012",
+        "incidentNumber": 2012,
+        "title": "Repeated Self-Service Password Resets by Single User",
+        "description": "User performed 5 self-service password resets in 40 minutes. Each reset was verified with the registered authenticator app on the user's enrolled device, from the user's usual corporate IP, on their compliant laptop. Help desk ticket HD-88213 logged by the same user states they kept forgetting the new password immediately after setting it. No sign-ins from other locations and no changes to MFA methods or recovery contacts.",
+        "severity": "Low",
+        "status": "New",
+        "tactics": [],
+        "techniques": [],
+        "alertsCount": 1,
+        "alerts": [{"id": "a-2012", "title": "Multiple password reset events", "description": "Repeated self-service password reset activity for a single identity.", "severity": "Low", "vendor": "Microsoft Entra ID", "tactics": [], "techniques": []}],
+        "entities": [
+          {"kind": "Account", "name": "mbauer@cybersecurity.corp", "upn": "mbauer@cybersecurity.corp"},
+          {"kind": "Ip", "address": "10.8.22.140", "direction": "Internal", "location": "Corporate LAN"}
+        ],
+        "labels": ["SSPR", "HelpdeskConfirmed"]
+      }
+    }
+  ]
+}

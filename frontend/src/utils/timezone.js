@@ -1,4 +1,4 @@
-// Timezone definitions & formatting helpers for Sentinel AI SOC
+// Timezone definitions & formatting helpers for Warden SOC
 
 export const SUPPORTED_TIMEZONES = [
   { value: 'Asia/Kolkata', label: 'India Standard Time (IST, UTC+5:30)', short: 'IST' },
@@ -15,7 +15,7 @@ export const SUPPORTED_TIMEZONES = [
   { value: 'Australia/Sydney', label: 'Australian Eastern Time (AEST/AEDT, UTC+10/UTC+11)', short: 'AEST' }
 ];
 
-const STORAGE_KEY = 'sentinel_user_timezone';
+const STORAGE_KEY = 'warden_user_timezone';
 
 export function getUserTimezone() {
   if (typeof window === 'undefined') return 'UTC';

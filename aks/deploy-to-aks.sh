@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Microsoft Sentinel AI SOC Agent - Automated Deployment Script for AKS
+# Microsoft Warden SOC Agent - Automated Deployment Script for AKS
 # Autonomous AI Incident Triage Platform for Microsoft Sentinel & Defender XDR
 # ==============================================================================
 
 set -euo pipefail
 
 SUBSCRIPTION_ID="${1:-YOUR_AZURE_SUBSCRIPTION_ID}"
-RESOURCE_GROUP="${2:-rg-sentinel-soc}"
-AKS_CLUSTER_NAME="${3:-aks-sentinel-soc}"
+RESOURCE_GROUP="${2:-rg-warden}"
+AKS_CLUSTER_NAME="${3:-aks-warden}"
 ACR_NAME="${4:-sentinelsocregistry}"
 LOCATION="${5:-eastus}"
 
 echo "========================================================"
-echo "🚀 Deploying Microsoft Sentinel AI SOC Platform to AKS"
+echo "🚀 Deploying Microsoft Warden SOC Platform to AKS"
 echo "========================================================"
 
 # 1. Set Subscription
@@ -29,7 +29,7 @@ fi
 
 # 3. Build Container Image in ACR
 echo "🔹 Building Container Image in ACR..."
-az acr build --registry "$ACR_NAME" --image "sentinel-soc-agent:latest" ..
+az acr build --registry "$ACR_NAME" --image "warden-agent:latest" ..
 
 # 4. Check / Create AKS Cluster
 echo "🔹 Checking AKS Cluster ($AKS_CLUSTER_NAME)..."
@@ -62,9 +62,9 @@ kubectl apply -k .
 
 # 7. Rollout Status
 echo "⏳ Waiting for Sentinel SOC Agent rollout to complete..."
-kubectl rollout status deployment/sentinel-soc-agent -n sentinel-soc --timeout=180s
+kubectl rollout status deployment/warden-agent -n warden --timeout=180s
 
 echo "========================================================"
 echo "✅ Deployment Successfully Completed!"
 echo "========================================================"
-kubectl get svc -n sentinel-soc
+kubectl get svc -n warden

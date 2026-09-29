@@ -1,0 +1,256 @@
+{
+  "schema_version": 1,
+  "category": "cloud",
+  "description": "Azure control-plane and cloud workload incidents. False positives are built from infrastructure-as-code, cost management and backup operations that superficially resemble destructive or exfiltration activity.",
+  "incidents": [
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1530", "T1567"],
+        "severity": "High",
+        "rationale": "Storage container made publicly readable then bulk-downloaded from an external IP within minutes, by an identity with no storage responsibilities."
+      },
+      "incident": {
+        "id": "cl-001",
+        "incidentNumber": 4001,
+        "title": "Storage Container Made Public Followed by Bulk Anonymous Download",
+        "description": "Blob container 'customer-exports' on storage account stprodfinance had its public access level changed from Private to Container by user account bkovac. Within 6 minutes, 2,847 anonymous GET requests retrieved 31 GB from 79.137.202.44 (hosting provider, Romania). bkovac works in facilities management and has never previously touched a storage resource. The change was made via the REST API, not the portal, and no change ticket exists.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["Collection", "Exfiltration"],
+        "techniques": ["T1530", "T1567"],
+        "alertsCount": 3,
+        "alerts": [{"id": "a-4001", "title": "Publicly accessible storage container", "description": "Container access level changed to allow anonymous read.", "severity": "High", "vendor": "Microsoft Defender for Cloud", "tactics": ["Collection"], "techniques": ["T1530"]}],
+        "entities": [
+          {"kind": "Account", "name": "bkovac@cybersecurity.corp", "upn": "bkovac@cybersecurity.corp"},
+          {"kind": "Ip", "address": "79.137.202.44", "direction": "Outbound", "location": "Romania"},
+          {"kind": "AzureResource", "name": "stprodfinance", "resourceType": "Microsoft.Storage/storageAccounts"}
+        ],
+        "labels": ["DataExposure", "Exfiltration"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1552.001", "T1078.004"],
+        "severity": "High",
+        "rationale": "Bulk secret enumeration from a Key Vault by a service principal authenticating from an unusual ASN, reading secrets far outside its normal scope."
+      },
+      "incident": {
+        "id": "cl-002",
+        "incidentNumber": 4002,
+        "title": "Bulk Key Vault Secret Retrieval by Service Principal",
+        "description": "Service principal 'sp-reporting-readonly' retrieved all 94 secrets from kv-prod-core in 3 minutes. This SP normally reads exactly 2 connection-string secrets on a 15-minute schedule from the AKS cluster's egress IP. The bulk retrieval authenticated from 5.188.62.140 (bulletproof hosting, Moldova) using a client secret added 40 minutes earlier. Retrieved secrets include production database credentials and third-party API keys.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["CredentialAccess"],
+        "techniques": ["T1552.001", "T1078.004"],
+        "alertsCount": 2,
+        "alerts": [{"id": "a-4002", "title": "Unusual Key Vault access volume", "description": "Identity retrieved an abnormal number of secrets.", "severity": "High", "vendor": "Microsoft Defender for Cloud", "tactics": ["CredentialAccess"], "techniques": ["T1552.001"]}],
+        "entities": [
+          {"kind": "Account", "name": "sp-reporting-readonly", "upn": "sp-reporting-readonly"},
+          {"kind": "Ip", "address": "5.188.62.140", "direction": "Inbound", "location": "Moldova"},
+          {"kind": "AzureResource", "name": "kv-prod-core", "resourceType": "Microsoft.KeyVault/vaults"}
+        ],
+        "labels": ["KeyVaultAbuse", "CredentialAccess"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1496"],
+        "severity": "High",
+        "rationale": "GPU VM fleet deployed in an unused region by a compromised identity, connecting to mining pools - resource hijacking."
+      },
+      "incident": {
+        "id": "cl-003",
+        "incidentNumber": 4003,
+        "title": "Unauthorised GPU Virtual Machine Deployment with Mining Pool Traffic",
+        "description": "Eight Standard_NC24ads_A100_v4 GPU virtual machines were deployed into a new resource group in Brazil South, a region the organisation does not operate in. Deployment used credentials of a DevOps engineer whose account showed an impossible-travel alert 3 hours prior. All eight VMs established sustained outbound connections to pool.minexmr.com on port 4444. Projected spend is 47,000 USD per month against a total subscription budget of 12,000.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["Impact"],
+        "techniques": ["T1496"],
+        "alertsCount": 4,
+        "alerts": [{"id": "a-4003", "title": "Cryptomining activity detected", "description": "Outbound connections to known mining pool infrastructure.", "severity": "High", "vendor": "Microsoft Defender for Cloud", "tactics": ["Impact"], "techniques": ["T1496"]}],
+        "entities": [
+          {"kind": "Account", "name": "afernandez@cybersecurity.corp", "upn": "afernandez@cybersecurity.corp"},
+          {"kind": "Ip", "address": "138.201.88.13", "direction": "Outbound", "location": "Mining Pool"}
+        ],
+        "labels": ["Cryptomining", "ResourceHijacking"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "TRUE_POSITIVE",
+        "techniques": ["T1485", "T1078.004"],
+        "severity": "High",
+        "rationale": "Mass deletion of production resources including backups and recovery vaults by a recently-compromised identity, outside change control."
+      },
+      "incident": {
+        "id": "cl-004",
+        "incidentNumber": 4004,
+        "title": "Mass Deletion of Production Resources Including Recovery Vaults",
+        "description": "Sixty-three resources were deleted from the production subscription in 11 minutes, including two Recovery Services vaults, all soft-delete-protected backups where the retention allowed, and the diagnostic settings that forward logs to Sentinel. Deletions were performed by an account that received Owner role 25 minutes earlier via a self-assignment from an already-compromised Global Administrator. No change ticket exists and the deletion order targeted logging infrastructure first.",
+        "severity": "High",
+        "status": "New",
+        "tactics": ["Impact", "DefenseEvasion"],
+        "techniques": ["T1485", "T1078.004", "T1562.008"],
+        "alertsCount": 5,
+        "alerts": [{"id": "a-4004", "title": "Mass resource deletion", "description": "Abnormal volume of delete operations against production resources.", "severity": "High", "vendor": "Microsoft Defender for Cloud", "tactics": ["Impact"], "techniques": ["T1485"]}],
+        "entities": [
+          {"kind": "Account", "name": "mreyes@cybersecurity.corp", "upn": "mreyes@cybersecurity.corp"},
+          {"kind": "Ip", "address": "31.14.40.209", "direction": "Inbound", "location": "Latvia"}
+        ],
+        "labels": ["Destruction", "AntiForensics"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "FALSE_POSITIVE",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Resource creation burst is a Terraform pipeline run from the CI service principal against a reviewed and merged pull request."
+      },
+      "incident": {
+        "id": "cl-005",
+        "incidentNumber": 4005,
+        "title": "Rapid Creation of 120 Resources Across Multiple Regions",
+        "description": "120 resources were created across 3 regions in 9 minutes by service principal sp-terraform-ci. The SP is the documented infrastructure-as-code deployment identity, authenticating from the GitHub Actions runner IP range declared in the CI allow-list. The deployment corresponds to merged pull request PR-2291 'provision DR environment', approved by two reviewers, and the created resource names and regions match the Terraform plan output attached to that PR exactly. All regions are within the organisation's approved geography list.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["Impact"],
+        "techniques": ["T1578.002"],
+        "alertsCount": 2,
+        "alerts": [{"id": "a-4005", "title": "Unusual resource creation volume", "description": "Resource provisioning rate exceeds subscription baseline.", "severity": "Medium", "vendor": "Microsoft Defender for Cloud", "tactics": ["Impact"], "techniques": ["T1578.002"]}],
+        "entities": [
+          {"kind": "Account", "name": "sp-terraform-ci", "upn": "sp-terraform-ci"}
+        ],
+        "labels": ["IaC", "CIPipeline"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "FALSE_POSITIVE",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Bulk deletion is the scheduled decommission of the retired test environment, executed under an approved change with the resource list matching the decommission plan."
+      },
+      "incident": {
+        "id": "cl-006",
+        "incidentNumber": 4006,
+        "title": "Bulk Resource Deletion in Non-Production Subscription",
+        "description": "88 resources were deleted from the sandbox subscription by the platform engineering lead during business hours. Change ticket CHG-2026-1176 authorises the decommission of the retired 'legacy-test' environment following its migration, with a resource list attached that matches the deleted set exactly. Deletions were confined to the sandbox subscription, no production resources or recovery vaults were touched, diagnostic settings remain intact, and the finance team had flagged these resources for cost reduction.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["Impact"],
+        "techniques": ["T1485"],
+        "alertsCount": 2,
+        "alerts": [{"id": "a-4006", "title": "Mass resource deletion", "description": "Large number of delete operations detected.", "severity": "Medium", "vendor": "Microsoft Defender for Cloud", "tactics": ["Impact"], "techniques": ["T1485"]}],
+        "entities": [
+          {"kind": "Account", "name": "ptorres@cybersecurity.corp", "upn": "ptorres@cybersecurity.corp"},
+          {"kind": "Ip", "address": "10.12.4.77", "direction": "Internal", "location": "Corporate VPN"}
+        ],
+        "labels": ["Decommission", "ApprovedChange"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "FALSE_POSITIVE",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Key Vault reads are the backup service's documented nightly job, matching its long-standing schedule, scope and source."
+      },
+      "incident": {
+        "id": "cl-007",
+        "incidentNumber": 4007,
+        "title": "Service Identity Reading Multiple Key Vault Secrets Overnight",
+        "description": "Managed identity 'mi-backup-orchestrator' read 18 secrets from kv-prod-backup at 02:00. This identity has performed the identical read set at 02:00 every night for 14 months as part of the backup orchestration job, and the access policy grants it exactly these 18 secrets and nothing more. Source is the backup automation account's VNet-integrated function app, the same as every prior run. The alert fired because a Defender for Cloud analytics rule was newly enabled and had no baseline yet.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["CredentialAccess"],
+        "techniques": ["T1552.001"],
+        "alertsCount": 1,
+        "alerts": [{"id": "a-4007", "title": "Key Vault secret access", "description": "Identity accessed multiple secrets in a short window.", "severity": "Medium", "vendor": "Microsoft Defender for Cloud", "tactics": ["CredentialAccess"], "techniques": ["T1552.001"]}],
+        "entities": [
+          {"kind": "Account", "name": "mi-backup-orchestrator", "upn": "mi-backup-orchestrator"},
+          {"kind": "AzureResource", "name": "kv-prod-backup", "resourceType": "Microsoft.KeyVault/vaults"}
+        ],
+        "labels": ["BackupAutomation", "NewRuleNoBaseline"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "SUSPICIOUS_ESCALATE",
+        "techniques": ["T1562.008"],
+        "severity": "Medium",
+        "rationale": "Diagnostic logging disabled on a production resource without a ticket. Could be cost work or anti-forensics - no other indicators either way."
+      },
+      "incident": {
+        "id": "cl-008",
+        "incidentNumber": 4008,
+        "title": "Diagnostic Logging Disabled on Production Storage Account",
+        "description": "Diagnostic settings forwarding logs to the Sentinel workspace were removed from storage account stprodmedia by a platform engineer during business hours from the corporate network. No change ticket references this. The same engineer removed similar settings from three non-production accounts the previous week as part of an informal cost-reduction effort discussed in a team channel but never ticketed. No other suspicious activity is associated with the account, and no data-plane anomalies followed. Intent cannot be determined from the incident alone.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["DefenseEvasion"],
+        "techniques": ["T1562.008"],
+        "alertsCount": 1,
+        "alerts": [{"id": "a-4008", "title": "Audit logging disabled", "description": "Diagnostic settings removed from a monitored resource.", "severity": "Medium", "vendor": "Microsoft Defender for Cloud", "tactics": ["DefenseEvasion"], "techniques": ["T1562.008"]}],
+        "entities": [
+          {"kind": "Account", "name": "swalsh@cybersecurity.corp", "upn": "swalsh@cybersecurity.corp"},
+          {"kind": "AzureResource", "name": "stprodmedia", "resourceType": "Microsoft.Storage/storageAccounts"}
+        ],
+        "labels": ["LoggingDisabled", "NoChangeTicket"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "SUSPICIOUS_ESCALATE",
+        "techniques": ["T1098.003"],
+        "severity": "Medium",
+        "rationale": "Broad role assignment at subscription scope with a plausible but unverified justification. Needs manager confirmation rather than an autonomous call."
+      },
+      "incident": {
+        "id": "cl-009",
+        "incidentNumber": 4009,
+        "title": "Contributor Role Assigned at Subscription Scope",
+        "description": "Contributor was granted at subscription scope to a security engineer by a Global Administrator during business hours from the corporate network. Organisational policy requires resource-group-scoped assignments with PIM, and this assignment is permanent and subscription-wide. The Teams message thread referenced in the assignment description mentions an urgent audit-evidence collection exercise, which is plausible, but no formal approval or ticket exists and the scope exceeds what evidence collection would require.",
+        "severity": "Medium",
+        "status": "New",
+        "tactics": ["PrivilegeEscalation"],
+        "techniques": ["T1098.003"],
+        "alertsCount": 1,
+        "alerts": [{"id": "a-4009", "title": "Privileged role assignment at broad scope", "description": "High-privilege role granted at subscription level.", "severity": "Medium", "vendor": "Microsoft Defender for Cloud", "tactics": ["PrivilegeEscalation"], "techniques": ["T1098.003"]}],
+        "entities": [
+          {"kind": "Account", "name": "ychen@cybersecurity.corp", "upn": "ychen@cybersecurity.corp"}
+        ],
+        "labels": ["RBACChange", "PolicyDeviation"]
+      }
+    },
+    {
+      "expected": {
+        "verdict": "BENIGN",
+        "techniques": [],
+        "severity": "Informational",
+        "rationale": "Network security group change alert triggered by an automated policy remediation task doing exactly what it was designed to do."
+      },
+      "incident": {
+        "id": "cl-010",
+        "incidentNumber": 4010,
+        "title": "Network Security Group Rules Modified Across Multiple Subnets",
+        "description": "NSG rules were modified on 22 subnets by the Azure Policy remediation managed identity. The remediation task enforces policy 'Deny inbound RDP from Internet', and every modification removes or restricts an inbound 3389 rule - the changes are exclusively restrictive. The task ran on its scheduled weekly cadence and its output matches the policy compliance report. This is the security control operating as intended; the detection rule simply does not distinguish tightening from loosening.",
+        "severity": "Low",
+        "status": "New",
+        "tactics": [],
+        "techniques": [],
+        "alertsCount": 22,
+        "alerts": [{"id": "a-4010", "title": "Network security group modified", "description": "Inbound security rules changed on multiple subnets.", "severity": "Low", "vendor": "Microsoft Defender for Cloud", "tactics": [], "techniques": []}],
+        "entities": [
+          {"kind": "Account", "name": "mi-policy-remediation", "upn": "mi-policy-remediation"}
+        ],
+        "labels": ["AzurePolicy", "AutoRemediation"]
+      }
+    }
+  ]
+}

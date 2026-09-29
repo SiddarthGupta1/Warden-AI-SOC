@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
-from app.auth.jwt_handler import get_current_user, User
+from app.auth.jwt_handler import get_current_user, require_role, User
 from app.services.sentinel_client import sentinel_client
 
 router = APIRouter(prefix="/incidents", tags=["Sentinel Incidents"])
@@ -137,7 +137,9 @@ class RemediationRequest(BaseModel):
 async def execute_incident_remediation(
     incident_id: str,
     req: RemediationRequest,
-    current_user: User = Depends(get_current_user)
+    # Containment disables accounts, isolates hosts and publishes blocklist entries.
+    # Restricted to admins; analysts can investigate and classify but not contain.
+    current_user: User = Depends(require_role("admin"))
 ):
     """Trigger active SOAR remediation action (Device isolation, Entra session revoke, IP block, Playbook)"""
     from app.services.remediation_service import remediation_service
@@ -153,6 +155,21 @@ async def execute_incident_remediation(
         parameters=req.parameters
     )
     return result
+
+@router.get("/{incident_id}/audit")
+async def get_incident_audit_trail(
+    incident_id: str,
+    limit: int = 100,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Durable record of every remediation attempt against this incident, including
+    refusals and failures. Survives restarts and is independent of whether the
+    Sentinel comment write succeeded.
+    """
+    from app import db
+    return {"incident_id": incident_id, "entries": db.get_audit_log(incident_id=incident_id, limit=limit)}
+
 
 class AssignRequest(BaseModel):
     user_id: Optional[str] = None
